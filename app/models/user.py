@@ -6,7 +6,7 @@ from app.core.db import Base
 from sqlalchemy import Enum
 import enum
 
-class AccountType(enum.Enum):
+class AccountRole(enum.Enum):
         ADMIN = "admin"
         AUTHOR = "author"
         READER = "reader"
@@ -26,14 +26,14 @@ class User(Base):
     user_name: Mapped[str] = mapped_column(String(20),unique=True)
     password: Mapped[str] = mapped_column(String(100))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    _account_role: Mapped[str] = mapped_column("account_role", String(50), default=AccountType.READER.value)
+    _account_role: Mapped[str] = mapped_column("account_role", String(50), default=AccountRole.READER.value)
 
     @property
-    def account_role(self) -> AccountType:
-        return AccountType(self._account_role)
+    def account_role(self) -> AccountRole:
+        return AccountRole(self._account_role)
 
     @account_role.setter
-    def account_role(self, value: AccountType):
+    def account_role(self, value: AccountRole):
         self._account_role = value.value
 
 

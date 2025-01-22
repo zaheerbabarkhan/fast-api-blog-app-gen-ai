@@ -21,5 +21,6 @@ def get_password_hash(password: str) -> str:
 def create_access_token(payload: TokenPayload, expires_delta: timedelta) -> str:
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode = {"exp": expire, "sub": str(payload)}
+    print("secret key while encoding: ", settings.SECRET_KEY)
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

@@ -2,13 +2,13 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr, model_validator
 import uuid
 
-from app.models.user import AccountRole
+from app.models.user import UserRole, UserStatus
 
 class UserBase(BaseModel):
     user_name: str
     name: str
     email: EmailStr
-    account_role: Optional[AccountRole] = AccountRole.READER
+    account_role: Optional[UserRole] = UserRole.READER
 
 class UserCreate(UserBase):
     password: str
@@ -27,8 +27,8 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     id: uuid.UUID
-    is_active: bool
-    account_role: AccountRole
+    status: UserStatus
+    account_role: UserRole
 
 
 class UserLogin(BaseModel):

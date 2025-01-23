@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.models.user import User, AccountRole
+from app.models.user import User, UserRole, UserStatus
 from app.core.security import get_password_hash
 from app.schemas.user import UserCreate, UserUpdate
 
@@ -9,8 +9,8 @@ def create_user(db: Session, user: UserCreate):
     user.password = get_password_hash(user.password)
     new_user = User(**user.model_dump())
 
-    if user.account_role == AccountRole.ADMIN.value or user.account_role == AccountRole.AUTHOR.value:
-        new_user.is_active = False
+    if user.account_role == UserRole.ADMIN.value or user.account_role == UserRole.AUTHOR.value:
+        new_user.status = UserStatus.IN_ACTIVE.value
     
     db.add(new_user)
     db.commit()

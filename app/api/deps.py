@@ -11,7 +11,7 @@ import jwt
 from app.core.db import get_db
 from app.core.config import settings
 from app.core import security
-from app.models.user import AccountRole, User
+from app.models.user import UserRole, User, UserStatus
 from app.schemas.user import TokenPayload
 
 
@@ -38,7 +38,7 @@ def get_current_user(db: SessionDep, token: TokenDep) -> User:
     user = db.get(User, token_data.user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    if not user.is_active:
+    if user.status == UserStatus.IN_ACTIVE.value:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inactive user")
     return user
 
@@ -47,19 +47,16 @@ def get_current_user(db: SessionDep, token: TokenDep) -> User:
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 def get_current_author(current_user: CurrentUser) -> User:
-    if current_user.account_role != AccountRole.AUTHOR:
+    if current_user.user_role != UserRole.AUTHOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You need to have an author account for this."
         )
     return current_user
 
-CurrentAuthor = [Annotated, Depends(get_current_author)]
 
 def get_current_admin(current_user: CurrentUser) -> User:
-    if current_user.account_role != AccountRole.ADMIN:
+    if current_user.user_role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You need to have an author account for this."
         )
     return current_user 
-
-CurrentAdmin = Annotated[User, Depends(get_current_admin)]

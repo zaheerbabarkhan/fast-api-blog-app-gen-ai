@@ -9,8 +9,16 @@ class Settings(BaseSettings):
         env_file=".env",
     )
     API_V1_STR: str = "/api/v1"
-    # SECRET_KEY: str = secrets.token_urlsafe(32)
-    SECRET_KEY: str = "this is secret key"
+    ENV: str
+    SECRET_KEY: str = ""
+
+    def __init__(self, **values):
+        super().__init__(**values)
+        if self.ENV == "development":
+            self.SECRET_KEY = "secret"
+        else:
+            self.SECRET_KEY = secrets.token_urlsafe(32)
+    
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
 
 

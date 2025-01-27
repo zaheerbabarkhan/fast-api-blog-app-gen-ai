@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENV: str
     SECRET_KEY: str = ""
-    CONNECT_SQLITE: bool = False
+    DATABASE_TYPE: str = "POSTGRES"
 
     def __init__(self, **values):
         super().__init__(**values)
@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
-        if self.CONNECT_SQLITE:
+        if self.DATABASE_TYPE == "SQLITE":
             return "sqlite:///./test.db"
         return f"postgresql+psycopg://{quote_plus(self.POSTGRES_USER)}:{quote_plus(self.POSTGRES_PASSWORD)}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         # return PostgresDsn.build(

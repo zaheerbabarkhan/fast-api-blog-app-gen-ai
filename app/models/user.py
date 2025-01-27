@@ -30,7 +30,7 @@ class User(Base, BaseModelMixin):
     __tablename__= "users"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+        UUID(as_uuid=True), primary_key=True, default=lambda: uuid.uuid4()
     )
     name: Mapped[str] = mapped_column(String(50))
     email: Mapped[str] = mapped_column(String(100), unique=True)

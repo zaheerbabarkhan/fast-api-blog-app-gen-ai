@@ -1,5 +1,6 @@
 
-from sqlalchemy import SMALLINT, ForeignKey, String, Text, ARRAY
+from datetime import datetime
+from sqlalchemy import SMALLINT, ForeignKey, String, Text, ARRAY, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from typing import List, Optional
 from sqlalchemy.dialects.postgresql import UUID
@@ -10,11 +11,14 @@ import enum
 
 from app.core.db import Base
 from app.models.base_model_mixin import BaseModelMixin
-from app.models.user import User
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 class PostStatus(enum.Enum):
-    PUBLISHED = 0
-    DRAFT = 1
+    PUBLISHED = "PUBLISHED"
+    DRAFT = "DRAFT"
 
     def __int__(self):
         return self.value
@@ -27,8 +31,11 @@ class Post(Base, BaseModelMixin):
     )
     title: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[int] = mapped_column(SMALLINT(), default=PostStatus.DRAFT.value)
+    status: Mapped[int] = mapped_column(String(20), default=PostStatus.DRAFT.value)
     tags: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(default=func.now()) 
+    updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
+    
+    author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
 
-    user: Mapped['User'] = relationship('User', back_populates='posts')
+    author: Mapped['User'] = relationship('User', back_populates='posts')

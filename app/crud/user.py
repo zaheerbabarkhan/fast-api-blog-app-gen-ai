@@ -8,13 +8,12 @@ from app.schemas.user import UserCreate, UserUpdate
 def create_user(db: Session, user: UserCreate):
     user.password = get_password_hash(user.password)
     new_user = User(**user.model_dump())
-
-    if user.account_role == UserRole.ADMIN.value or user.account_role == UserRole.AUTHOR.value:
+    if user.user_role.value == UserRole.ADMIN.value or user.user_role.value == UserRole.AUTHOR.value:
         new_user.status = UserStatus.IN_ACTIVE.value
     
     db.add(new_user)
     db.commit()
-    db.refresh(new_user)
+    db.refresh(new_user)    
     return new_user
 
 def get_user_by_email(db: Session, email: str) -> User | None:

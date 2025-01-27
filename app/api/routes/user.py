@@ -8,7 +8,7 @@ from app.crud import user as user_crud
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/", response_model=UserResponse)
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(db: SessionDep, user_data: UserCreate):
    
     user = user_crud.get_user_by_email(db=db, email=user_data.email)

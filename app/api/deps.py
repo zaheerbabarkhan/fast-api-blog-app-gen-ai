@@ -57,6 +57,6 @@ def get_current_author(current_user: CurrentUser) -> User:
 def get_current_admin(current_user: CurrentUser) -> User:
     if current_user.user_role != UserRole.ADMIN:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="You need to have an author account for this."
+            status_code=status.HTTP_403_FORBIDDEN, detail="You need to have an admin account for this."
         )
     return current_user 

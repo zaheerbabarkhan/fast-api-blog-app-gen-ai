@@ -19,24 +19,28 @@ if TYPE_CHECKING:
 class PostStatus(enum.Enum):
     PUBLISHED = "PUBLISHED"
     DRAFT = "DRAFT"
-
-    def __int__(self):
-        return self.value
+    
+    def __eq__(self, other):
+        if isinstance(other, str):  # Allow direct comparison with strings
+            return self.value == other
+        if isinstance(other, PostStatus):  # Normal enum comparison
+            return self is other
+        return NotImplemented
 
 class Post(Base, BaseModelMixin):
     __tablename__ = 'posts'
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=lambda: uuid.uuid4()
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
     title: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[int] = mapped_column(String(20), default=PostStatus.DRAFT.value)
+    status: Mapped[str] = mapped_column(String(20), default=PostStatus.DRAFT.value)
     _tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=func.now()) 
     updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
     
-    author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    author_id: Mapped[uuid.UUID] = mapped_column(String, ForeignKey('users.id'), nullable=False)
 
     author: Mapped['User'] = relationship('User', back_populates='posts')
 

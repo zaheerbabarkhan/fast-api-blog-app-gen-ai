@@ -16,8 +16,7 @@ def create_user(db: Session, user: UserCreate):
     db.refresh(new_user)    
     return new_user
 
-def get_user_by_email(db: Session, email: str) -> User | None:
-    return db.query(User).filter(User.email == email).first()
+
 
 def update_user(db: Session, current_user: User, update_data: UserUpdate):
     update_values = update_data.model_dump(exclude_unset=True)
@@ -26,3 +25,18 @@ def update_user(db: Session, current_user: User, update_data: UserUpdate):
 
     db.commit()
     return current_user 
+
+def activate_user(db: Session, user: User) -> User:
+    user.status = UserStatus.ACTIVE.value
+    db.commit()
+    return user
+
+def get_all_users(db: Session) -> list[User]:
+    return db.query(User).all()
+
+def get_user_by_email(db: Session, email: str) -> User | None:
+    return db.query(User).filter(User.email == email).first()
+
+def get_user_by_id(db: Session, user_id: str) -> User | None:
+    return db.get(User,user_id)
+

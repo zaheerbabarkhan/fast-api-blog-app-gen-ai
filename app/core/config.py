@@ -1,4 +1,4 @@
-from pydantic import PostgresDsn, computed_field
+from pydantic import EmailStr, PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from urllib.parse import quote_plus
 
@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     ENV: str
     SECRET_KEY: str = ""
     DATABASE_TYPE: str = "POSTGRES"
+
+    SUPER_ADMIN_EMAIL: EmailStr
+    SUPER_ADMIN_NAME: str
+    SUPER_ADMIN_USER_NAME: str
+    SUPER_ADMIN_PASSWORD: str
 
     def __init__(self, **values):
         super().__init__(**values)

@@ -11,3 +11,4 @@ wheels/
 .env
 
 test.db
+temp_creds

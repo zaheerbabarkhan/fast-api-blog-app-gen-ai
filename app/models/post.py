@@ -16,16 +16,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.models.user import User
 
-class PostStatus(enum.Enum):
+class PostStatus(str,enum.Enum):
     PUBLISHED = "PUBLISHED"
     DRAFT = "DRAFT"
     
-    def __eq__(self, other):
-        if isinstance(other, str):  # Allow direct comparison with strings
-            return self.value == other
-        if isinstance(other, PostStatus):  # Normal enum comparison
-            return self is other
-        return NotImplemented
 
 class Post(Base, BaseModelMixin):
     __tablename__ = 'posts'
@@ -46,8 +40,8 @@ class Post(Base, BaseModelMixin):
 
     @property
     def tags_list(self) -> List[str]:
-        return self.tags.split(',') if self.tags else []
+        return self._tags.split(',') if self._tags else []
 
     @tags_list.setter
     def tags_list(self, value: List[str]):
-        self.tags = ','.join(value)
+        self._tags = ','.join(value)

@@ -2,7 +2,7 @@ from typing import Annotated
 from sqlalchemy import UUID
 from sqlalchemy.orm import Session
 from fastapi import Depends, status, HTTPException
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError    
 
@@ -22,12 +22,14 @@ reusable_oauth2 = OAuth2PasswordBearer(
 
 SessionDep = Annotated[Session, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]
+LoginFormData = Annotated[OAuth2PasswordRequestForm, Depends()]
 
 def get_current_user(db: SessionDep, token: TokenDep) -> User:
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
         )
+        
         user_data = eval(payload["sub"])
         token_data = TokenPayload(user_id=user_data["user_id"])
     except (InvalidTokenError, ValidationError):

@@ -14,5 +14,11 @@ def create_post(db: Session, author : CurrentUser, post_data: PostCreate):
 def get_post(db: Session, post_id: str):
     return db.get(Post, post_id)
 
+def update_post(db: Session, post: Post, post_data: PostCreate):
+    for field, value in post_data.model_dump(exclude_unset=True).items():
+        setattr(post, field, value)
+    db.commit()
+    return post
+
 def get_posts(db: Session):
     return db.query(Post).filter(Post.status == PostStatus.PUBLISHED.value).all()

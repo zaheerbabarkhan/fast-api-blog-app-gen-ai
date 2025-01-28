@@ -3,7 +3,7 @@
 ### Prerequisites
 
 - Python 3.10 or higher
-- PostgreSQL (if using PostgreSQL or set the `DATABASE_TYPE` to `SQLITE` in the [.env](http://_vscodecontentref_/4) file)
+- PostgreSQL (if using PostgreSQL or set the `DATABASE_TYPE` to `SQLITE` in the .env file)
 
 ### Steps
 
@@ -26,9 +26,9 @@
    uv sync
    ```
 
-4. **Add the [.env](http://_vscodecontentref_/4) file:**
+4. **Add the .env file:**
 
-   Create a [.env](http://_vscodecontentref_/5) file in the root directory and add the following environment variables:
+   Create a .env file in the root directory and add the following environment variables:
 
    ```env
    # Environment

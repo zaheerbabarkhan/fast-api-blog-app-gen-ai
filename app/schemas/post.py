@@ -31,3 +31,12 @@ class PostResponse(PostBase):
     id: uuid.UUID
     author_id: uuid.UUID
 
+class PostSummaryResponse(BaseModel):
+    summary: str
+
+class PostTitleTagsSuggestionsResponse(BaseModel):
+    title: str
+    tags_list: List[str]
+
+class PostQuestionAnswerRequest(BaseModel):
+    question: str

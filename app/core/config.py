@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     SUPER_ADMIN_USER_NAME: str
     SUPER_ADMIN_PASSWORD: str
 
+    GROQ_MODEL_NAME: str
+    GROQ_API_KEY: str
+
+    HUGGINGFACE_API_KEY: str
+    HUGGINGFACE_EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+
     def __init__(self, **values):
         super().__init__(**values)
         if self.ENV == "development":

@@ -6,6 +6,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.115.6",
+    "langchain>=0.3.17",
+    "langchain-groq>=0.2.4",
+    "langchain-huggingface>=0.1.2",
+    "langchain-postgres>=0.0.12",
     "passlib>=1.7.4",
     "psycopg>=3.2.4",
     "pydantic-settings>=2.7.1",

@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 
 from app.api.deps import SessionDep, get_current_author, CurrentUser
-from app.schemas.post import PostCreate, PostResponse, PostUpdate
+from app.schemas.post import PostCreate, PostResponse, PostUpdate, PostSummaryResponse, PostQuestionAnswerRequest
 from app.crud import post as post_crud
 from app.models.post import PostStatus
-
+from app.genai.services.summarization import SummarizationService
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -22,14 +22,14 @@ def create_post(db: SessionDep, author : CurrentUser, post_data: PostCreate):
     - **title** (`str`): The title of the post.
     - **content** (`str`): The content of the post.
     - **tags_list** (`Optional[List[str]]`): The list of tags for the post.
-    - **status** (`PostStatus`): The status of the post.
+    - **status** (`PostStatus`): The status of the post. Possible values are `DRAFT` or `PUBLISHED`.
 
     ### Response Body:
     - **id** (`uuid.UUID`): The ID of the created post.
     - **title** (`str`): The title of the created post.
     - **content** (`str`): The content of the created post.
     - **tags_list** (`Optional[List[str]]`): The list of tags for the created post.
-    - **status** (`PostStatus`): The status of the created post.
+    - **status** (`PostStatus`): The status of the post. Possible values are `DRAFT` or `PUBLISHED`.
     - **author_id** (`uuid.UUID`): The ID of the author of the created post.
     """
     return post_crud.create_post(db=db, author=author, post_data=post_data)
@@ -120,6 +120,7 @@ def update_post(db: SessionDep, author: CurrentUser, post_id: str, post_data: Po
 
 @router.get("/", response_model=List[PostResponse])
 def read_posts(db: SessionDep):
+
     """
     ## Reads all published posts.
 
@@ -135,3 +136,57 @@ def read_posts(db: SessionDep):
         - **author_id** (`uuid.UUID`): The ID of the author of the post.
     """
     return post_crud.get_posts(db=db)
+
+
+
+@router.get("/{post_id}/summarize", response_model=PostSummaryResponse)
+def summarize_post(db: SessionDep, post_id: str):
+    """
+    ## Summarizes a post by its ID.
+
+    This route takes a path parameter that is the post ID and returns a summary of the post.
+
+    ### Path Parameters:
+    - **post_id** (`str`): The ID of the post to summarize.
+
+    ### Raises:
+    - **HTTPException**: If the post ID is not a valid UUID.
+    - **HTTPException**: If the post is not found or is a draft.
+
+    ### Response Body:
+    - **summary** (`str`): The summary of the post.
+    """
+    try:
+        uuid.UUID(post_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
+    
+    post = post_crud.get_post(db=db, post_id=post_id)
+    if post is None or post.status == PostStatus.DRAFT:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    
+    summary = SummarizationService().summarize(content=post.content)
+    return summary
+    
+
+@router.get("/{post_id}/chat")
+def chat_with_post(db: SessionDep, post_id: str, current_user: CurrentUser, question_data: PostQuestionAnswerRequest):
+    """
+    ## Chat with a post.
+
+    This route takes a path parameter that is the post ID and returns a chat interface to interact with the post.
+
+    ### Path Parameters:
+    - **post_id** (`str`): The ID of the post to chat with.
+    """
+
+    try:
+        uuid.UUID(post_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
+    
+    post = post_crud.get_post(db=db, post_id=post_id)
+    if post is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    
+    return {"message": "Chat with post"}

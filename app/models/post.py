@@ -1,20 +1,20 @@
 
 from datetime import datetime
-from sqlalchemy import SMALLINT, ForeignKey, String, Text, ARRAY, func
+from sqlalchemy import  ForeignKey, String, Text, func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
-from typing import List, Optional
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import text
+from typing import List, Optional, TYPE_CHECKING
+
 
 import uuid
 import enum
 
 from app.core.db import Base
 from app.models.base_model_mixin import BaseModelMixin
-from typing import TYPE_CHECKING
+from app.models.comment import Comment
 
 if TYPE_CHECKING:
     from app.models.user import User
+    
 
 class PostStatus(str,enum.Enum):
     PUBLISHED = "PUBLISHED"
@@ -37,7 +37,8 @@ class Post(Base, BaseModelMixin):
     author_id: Mapped[uuid.UUID] = mapped_column(String, ForeignKey('users.id'), nullable=False)
 
     author: Mapped['User'] = relationship('User', back_populates='posts')
-
+    comments: Mapped[List['Comment']] = relationship('Comment', back_populates='post', lazy="select")
+    
     @property
     def tags_list(self) -> List[str]:
         return self._tags.split(',') if self._tags else []

@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import CurrentUser
 from app.models.post import Post, PostStatus
@@ -12,7 +12,7 @@ def create_post(db: Session, author : CurrentUser, post_data: PostCreate):
     return new_post
 
 def get_post(db: Session, post_id: str):
-    return db.get(Post, post_id)
+    return db.query(Post).options(joinedload(Post.comments)).filter(Post.id == post_id and Post.status == PostStatus.PUBLISHED).first()
 
 def update_post(db: Session, post: Post, post_data: PostCreate):
     for field, value in post_data.model_dump(exclude_unset=True).items():
@@ -21,4 +21,4 @@ def update_post(db: Session, post: Post, post_data: PostCreate):
     return post
 
 def get_posts(db: Session):
-    return db.query(Post).filter(Post.status == PostStatus.PUBLISHED.value).all()
+    return db.query(Post).filter(Post.status == PostStatus.PUBLISHED).all()

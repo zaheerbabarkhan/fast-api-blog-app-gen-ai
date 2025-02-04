@@ -10,13 +10,14 @@ from app.core.config import settings
 
 from app.models.user import User, UserRole
 from app.models.post import Post
+from app.models.comment import Comment
 
 from app.crud import user as user_crud
 from app.schemas.user import UserCreate
 
 
 # Drop all tables
-Base.metadata.drop_all(bind=engine)
+# Base.metadata.drop_all(bind=engine)
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
@@ -30,5 +31,5 @@ super_admin = UserCreate(
     user_role=UserRole.SUPER_ADMIN,
 )
 
-user_crud.create_user(SessionLocal(),super_admin)
+# user_crud.create_user(SessionLocal(),super_admin)
 print("Database tables created successfully!")

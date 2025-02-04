@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List
+from typing import List, TYPE_CHECKING
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, func, text, SMALLINT
+from sqlalchemy import String, func
 from sqlalchemy.dialects.postgresql import UUID
 
 import uuid
@@ -10,6 +10,9 @@ import enum
 from app.models.base_model_mixin import BaseModelMixin
 from app.models.post import Post
 from app.core.db import Base
+
+if TYPE_CHECKING:
+    from app.models.comment import Comment
 
 class UserRole(enum.Enum):
         SUPER_ADMIN = "SUPER_ADMIN"
@@ -51,3 +54,4 @@ class User(Base, BaseModelMixin):
         self._user_role = value.value
 
     posts: Mapped[List['Post']] = relationship('Post', back_populates='author')
+    comments: Mapped[List['Comment']] = relationship('Comment', back_populates='commenter')

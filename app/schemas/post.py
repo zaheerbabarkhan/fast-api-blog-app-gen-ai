@@ -3,6 +3,7 @@ import uuid
 from pydantic import BaseModel, model_validator
 
 from app.models.post import PostStatus
+from app.schemas.comment import CommentResponse
 
 
 class PostBase(BaseModel):
@@ -30,6 +31,7 @@ class PostUpdate(BaseModel):
 class PostResponse(PostBase):
     id: uuid.UUID
     author_id: uuid.UUID
+    comments: List[CommentResponse]
 
 class PostSummaryResponse(BaseModel):
     summary: str

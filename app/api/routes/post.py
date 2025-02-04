@@ -3,15 +3,17 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 
-from app.api.deps import SessionDep, get_current_author, CurrentUser
-from app.schemas.post import PostCreate, PostResponse, PostUpdate, PostSummaryResponse, PostQuestionAnswerRequest
+from app.api.deps import SessionDep, get_current_admin, get_current_author, CurrentUser, get_current_user
+from app.schemas.post import PostCreate, PostResponse, PostUpdate
+from app.schemas.comment import CommentCreateRequest, CommentResponse, CommentResponseWithReplies
 from app.crud import post as post_crud
+from app.crud import comment as comment_crud
 from app.models.post import PostStatus
-from app.genai.services.summarization import SummarizationService
 
-router = APIRouter(prefix="/posts", tags=["posts"])
 
-@router.post("/",dependencies=[Depends(get_current_author)], status_code=status.HTTP_201_CREATED, response_model=PostResponse)
+router = APIRouter(prefix="/posts")
+
+@router.post("/",dependencies=[Depends(get_current_author)], status_code=status.HTTP_201_CREATED, response_model=PostResponse, tags=["posts"])
 def create_post(db: SessionDep, author : CurrentUser, post_data: PostCreate):
     """
     ## Creates a new post.
@@ -35,8 +37,8 @@ def create_post(db: SessionDep, author : CurrentUser, post_data: PostCreate):
     return post_crud.create_post(db=db, author=author, post_data=post_data)
 
 
-@router.get("/{post_id}", response_model=PostResponse)
-def read_post(db: SessionDep, post_id: str):
+@router.get("/{post_id}", response_model=PostResponse, tags=["posts"])
+def get_post(db: SessionDep, post_id: str):
     """
     ## Reads a post by its ID.
 
@@ -65,16 +67,14 @@ def read_post(db: SessionDep, post_id: str):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
     
     post = post_crud.get_post(db=db, post_id=post_id)
-    print(type(post.status))
+
     if post is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     
-    if post.status == PostStatus.DRAFT:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     return post
 
 
-@router.put("/{post_id}", response_model=PostResponse, dependencies=[Depends(get_current_author)])
+@router.put("/{post_id}", response_model=PostResponse, dependencies=[Depends(get_current_author)], tags=["posts"])
 def update_post(db: SessionDep, author: CurrentUser, post_id: str, post_data: PostUpdate):
     """
     ## Updates a post by its ID.
@@ -118,8 +118,8 @@ def update_post(db: SessionDep, author: CurrentUser, post_id: str, post_data: Po
     return post_crud.update_post(db=db, post=post, post_data=post_data)
 
 
-@router.get("/", response_model=List[PostResponse])
-def read_posts(db: SessionDep):
+@router.get("/", response_model=List[PostResponse], tags=["posts"])
+def get_posts(db: SessionDep):
 
     """
     ## Reads all published posts.
@@ -138,48 +138,29 @@ def read_posts(db: SessionDep):
     return post_crud.get_posts(db=db)
 
 
-
-@router.get("/{post_id}/summarize", response_model=PostSummaryResponse)
-def summarize_post(db: SessionDep, post_id: str):
+@router.post("/{post_id}/comments", response_model=CommentResponse, tags=["comments"])
+def create_comment(db: SessionDep, post_id: str, comment_data: CommentCreateRequest, current_user: CurrentUser):
     """
-    ## Summarizes a post by its ID.
+    ## Creates a new comment on a post.
 
-    This route takes a path parameter that is the post ID and returns a summary of the post.
+    This route takes a path parameter that is the post ID and a JSON body that contains the comment data.
 
     ### Path Parameters:
-    - **post_id** (`str`): The ID of the post to summarize.
+    - **post_id** (`str`): The ID of the post to comment on.
+
+    ### Request Body:
+    - **content** (`str`): The content of the comment.
 
     ### Raises:
     - **HTTPException**: If the post ID is not a valid UUID.
-    - **HTTPException**: If the post is not found or is a draft.
+    - **HTTPException**: If the post is not found.
 
-    ### Response Body:
-    - **summary** (`str`): The summary of the post.
+    ### Response:
+    - **id** (`uuid.UUID`): The ID of the comment.
+    - **content** (`str`): The content of the comment.
+    - **post_id** (`uuid.UUID`): The ID of the post the comment belongs to.
+    - **author_id** (`uuid.UUID`): The ID of the author of the comment.
     """
-    try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
-    
-    post = post_crud.get_post(db=db, post_id=post_id)
-    if post is None or post.status == PostStatus.DRAFT:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    
-    summary = SummarizationService().summarize(content=post.content)
-    return summary
-    
-
-@router.get("/{post_id}/chat")
-def chat_with_post(db: SessionDep, post_id: str, current_user: CurrentUser, question_data: PostQuestionAnswerRequest):
-    """
-    ## Chat with a post.
-
-    This route takes a path parameter that is the post ID and returns a chat interface to interact with the post.
-
-    ### Path Parameters:
-    - **post_id** (`str`): The ID of the post to chat with.
-    """
-
     try:
         uuid.UUID(post_id)
     except ValueError:
@@ -189,4 +170,90 @@ def chat_with_post(db: SessionDep, post_id: str, current_user: CurrentUser, ques
     if post is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     
-    return {"message": "Chat with post"}
+    return comment_crud.create_comment(db=db, post_id=post_id, commenter=current_user, comment_data=comment_data)
+
+
+@router.get("/{post_id}/comments", response_model=List[CommentResponseWithReplies], tags=["comments"], dependencies=[Depends(get_current_user)])
+def get_comments(db: SessionDep, post_id: str):
+    """
+    ## Reads all comments on a post.
+
+    This route takes a path parameter that is the post ID.
+
+    ### Path Parameters:
+    - **post_id** (`str`): The ID of the post to read comments from.
+
+    ### Raises:
+    - **HTTPException**: If the post ID is not a valid UUID.
+    - **HTTPException**: If the post is not found.
+
+    ### Response:
+    - **List[CommentResponse]**: A list of comments on the post.
+        - **id** (`uuid.UUID`): The ID of the comment.
+        - **content** (`str`): The content of the comment.
+        - **post_id** (`uuid.UUID`): The ID of the post the comment belongs to.
+        - **author_id** (`uuid.UUID`): The ID of the author of the comment.
+    """
+    try:
+        uuid.UUID(post_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
+    
+    post = post_crud.get_post(db=db, post_id=post_id)
+    if post is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    
+    return comment_crud.get_post_comments(db=db, post_id=post_id)
+
+
+@router.post("/{post_id}/comments/{comment_id}/reply", response_model=CommentResponse, tags=["comments"])
+def reply_to_comment(db: SessionDep, post_id: str, comment_id: str, comment_data: CommentCreateRequest, current_user: CurrentUser):
+    """
+    ## Replies to a comment on a post.
+
+    This route takes a path parameter that is the post ID, a path parameter that is the comment ID, and a JSON body that contains the reply data.
+
+    ### Path Parameters:
+    - **post_id** (`str`): The ID of the post to reply to.
+    - **comment_id** (`str`): The ID of the comment to reply to.
+
+    ### Request Body:
+    - **content** (`str`): The content of the reply.
+
+    ### Raises:
+    - **HTTPException**: If the post ID is not a valid UUID.
+    - **HTTPException**: If the post is not found.
+    - **HTTPException**: If the comment ID is not a valid UUID.
+    - **HTTPException**: If the comment is not found.
+
+    ### Response:
+    - **id** (`uuid.UUID`): The ID of the reply.
+    - **content** (`str`): The content of the reply.
+    - **post_id** (`uuid.UUID`): The ID of the post the reply belongs to.
+    - **comment_id** (`uuid.UUID`): The ID of the comment the reply belongs to.
+    - **author_id** (`uuid.UUID`): The ID of the author of the reply.
+    """
+    try:
+        uuid.UUID(post_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
+    
+    try:
+        uuid.UUID(comment_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment not found")
+
+    post = post_crud.get_post(db=db, post_id=post_id)
+    if post is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    
+    try:
+        uuid.UUID(comment_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment not found")
+    
+    comment = comment_crud.get_comment(db=db, comment_id=comment_id)
+    if comment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+    
+    return comment_crud.reply_to_comment(db=db, post_id=post_id, parent_comment_id=comment_id, replier=current_user, reply_data=comment_data)

@@ -14,7 +14,7 @@ from app.core.db import Base
 if TYPE_CHECKING:
     from app.models.comment import Comment
 
-class UserRole(enum.Enum):
+class UserRole(str, enum.Enum):
         SUPER_ADMIN = "SUPER_ADMIN"
         ADMIN = "ADMIN"
         AUTHOR = "AUTHOR"

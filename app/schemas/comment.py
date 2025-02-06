@@ -18,7 +18,8 @@ class CommentResponse(BaseModel):
     
     
 class CommentResponseWithReplies(CommentResponse):
-    replies: List[CommentResponse] = []
+    replies: Optional[List[CommentResponse]] = None
+    pass
 
 class CommentUpdateRequest(BaseModel):
     content: str

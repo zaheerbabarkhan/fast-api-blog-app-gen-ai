@@ -12,7 +12,7 @@ def create_post(db: Session, author : CurrentUser, post_data: PostCreate):
     return new_post
 
 def get_post(db: Session, post_id: str):
-    return db.query(Post).options(joinedload(Post.comments)).filter(Post.id == post_id and Post.status == PostStatus.PUBLISHED).first()
+    return db.query(Post).options(joinedload(Post.comments), joinedload(Post.author)).filter(Post.id == post_id, Post.status == PostStatus.PUBLISHED).first()
 
 def update_post(db: Session, post: Post, post_data: PostCreate):
     for field, value in post_data.model_dump(exclude_unset=True).items():

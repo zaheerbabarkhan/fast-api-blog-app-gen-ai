@@ -26,7 +26,8 @@ class Comment(Base, BaseModelMixin):
     parent_comment_id: Mapped[Optional[uuid.UUID]] = mapped_column(String, ForeignKey('comments.id'), nullable=True)
     commenter_id: Mapped[uuid.UUID] = mapped_column(String, ForeignKey('users.id'), nullable=False)
 
-    commenter: Mapped['User'] = relationship('User')
+    commenter: Mapped['User'] = relationship('User', back_populates='comments')
     post: Mapped['Post'] = relationship('Post', back_populates='comments')
-    replies: Mapped[List['Comment']] = relationship('Comment', back_populates='parent_comment', remote_side=[id],lazy='joined')
-    parent_comment: Mapped[Optional['Comment']] = relationship('Comment', back_populates='replies', remote_side=[parent_comment_id])
+    replies: Mapped[List['Comment']] = relationship('Comment', back_populates='parent_comment', remote_side=[parent_comment_id])
+    parent_comment: Mapped[Optional['Comment']] = relationship('Comment', back_populates='replies', remote_side=[id])
+

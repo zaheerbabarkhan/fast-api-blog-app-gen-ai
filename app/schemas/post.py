@@ -1,9 +1,11 @@
+from datetime import datetime
 from typing import Optional, List
 import uuid
 from pydantic import BaseModel, model_validator
 
 from app.models.post import PostStatus
 from app.schemas.comment import CommentResponse
+from app.schemas.user import UserResponse
 
 
 class PostBase(BaseModel):
@@ -31,7 +33,18 @@ class PostUpdate(BaseModel):
 class PostResponse(PostBase):
     id: uuid.UUID
     author_id: uuid.UUID
-    comments: List[CommentResponse]
+    author: UserResponse
+
+class PostListResponse(BaseModel):
+    id: uuid.UUID
+    author_id: uuid.UUID
+    author: UserResponse
+    title: str
+    tags_list: List[str]
+    status: PostStatus
+    created_at: datetime
+    updated_at: datetime
+
 
 class PostSummaryResponse(BaseModel):
     summary: str

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str
 
     HUGGINGFACE_API_KEY: str
-    HUGGINGFACE_EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    HUGGINGFACE_EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-l6-v2"
 
     def __init__(self, **values):
         super().__init__(**values)

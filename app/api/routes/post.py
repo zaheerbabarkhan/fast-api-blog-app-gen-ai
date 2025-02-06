@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 
 from app.api.deps import SessionDep, get_current_author, CurrentUser
+from app.genai.services.question_answer.question_answer import QuestionAnswerService
 from app.schemas.post import PostCreate, PostResponse, PostUpdate, PostSummaryResponse, PostQuestionAnswerRequest
 from app.crud import post as post_crud
 from app.models.post import PostStatus
@@ -169,7 +170,7 @@ def summarize_post(db: SessionDep, post_id: str):
     return summary
     
 
-@router.get("/{post_id}/chat")
+@router.post("/{post_id}/chat")
 def chat_with_post(db: SessionDep, post_id: str, current_user: CurrentUser, question_data: PostQuestionAnswerRequest):
     """
     ## Chat with a post.
@@ -189,4 +190,13 @@ def chat_with_post(db: SessionDep, post_id: str, current_user: CurrentUser, ques
     if post is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     
-    return {"message": "Chat with post"}
+    # Add the question to the chat history
+    try:
+        chat = QuestionAnswerService(user_id=current_user.id, post_id=post_id, post_content=post.content, question=question_data.question)
+        answer = chat.get_answer(question=question_data.question)
+
+        if answer is None:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while processing the question")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while processing the question")
+    return {"answer": answer}

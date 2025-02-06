@@ -13,8 +13,7 @@ app = FastAPI(
 app.include_router(main_router, prefix=settings.API_V1_STR)
 @app.get("/")
 async def root():
-    print(settings.GROQ_MODEL_NAME)
-    print(settings.GROQ_API_KEY)
+
     llm = LLMService()
    
     response = llm.generate_summary("Hello")

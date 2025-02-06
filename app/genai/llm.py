@@ -13,6 +13,4 @@ class LLMService:
             max_retries=2,
             api_key=settings.GROQ_API_KEY,
         )
-    
-    def generate_summary(self, prompt: str):
-        return self.llm.invoke(prompt, reasoning_format="hidden")
+

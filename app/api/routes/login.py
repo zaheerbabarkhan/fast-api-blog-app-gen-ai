@@ -12,7 +12,6 @@ router = APIRouter(prefix="/login", tags=["login"])
 @router.post("/access-token", response_model=UserLoginResponse)
 async def login(db: SessionDep, login_data: LoginFormData):
 
-    print(login_data)
     user = user_crud.get_user_by_email(db=db, email=login_data.username)
     if user is None or not verify_password(login_data.password, user.password):
         raise HTTPException(status_code=400, detail="Invalid creds, please try again");

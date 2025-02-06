@@ -23,7 +23,7 @@ def summary_prompt_template():
     return raw_prompt
 
 
-def title_tags_suggestions_prompt_template():
+def suggestion_prompt_template():
     system_message = SystemMessage(
         content="You are an AI assistant that generates title and tags suggestions for blog posts. "
                 "You are given the post content in the format of <Content> and </Content>. "

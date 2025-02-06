@@ -13,6 +13,7 @@ from app.schemas.post import PostCreate, PostResponse, PostUpdate
 from app.crud import post as post_crud
 from app.crud import comment as comment_crud
 from app.services.question_answer.question_answer import QuestionAnswerService
+from app.services.suggestion import SuggestionService
 from app.services.summarization import SummarizationService
 
 
@@ -353,7 +354,7 @@ def update_comment(db: SessionDep, comment_id: str, comment_data: CommentCreateR
     return comment_crud.update_comment(db=db, comment=comment, comment_data=comment_data)
 
 
-@router.get("/{post_id}/summarize", response_model=PostSummaryResponse)
+@router.get("/{post_id}/summarize", response_model=PostSummaryResponse, tags=["LLM"])
 def summarize_post(db: SessionDep, post_id: str):
     """
     ## Summarizes a post by its ID.
@@ -383,7 +384,7 @@ def summarize_post(db: SessionDep, post_id: str):
     return summary
     
 
-@router.post("/{post_id}/chat")
+@router.post("/{post_id}/chat", tags=["LLM"])
 def chat_with_post(db: SessionDep, post_id: str, current_user: CurrentUser, question_data: PostQuestionAnswerRequest):
     """
     ## Chat with a post.
@@ -409,12 +410,12 @@ def chat_with_post(db: SessionDep, post_id: str, current_user: CurrentUser, ques
         answer = chat.get_answer(question=question_data.question)
 
         if answer is None:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while processing the question")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to process the question, please try later or contact the support team.")
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while processing the question")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to process the question, please try later or contact the support team.")
     return {"answer": answer}
 
-@router.post("/suggest", response_model=PostSuggestionsResponse)
+@router.post("/suggest", response_model=PostSuggestionsResponse, tags=["LLM"])
 def suggest_title_tags(db: SessionDep, current_user: CurrentUser, question_data: PostSuggestionsRequest):
     """
     ## Suggests title and tags for a post.
@@ -422,11 +423,13 @@ def suggest_title_tags(db: SessionDep, current_user: CurrentUser, question_data:
     This route takes a content and returns a suggested title and tags for a post.
 
     ### Request Body:
-    - **question** (`str`): The question to generate title and tags from.
+    - **content** (`str`): The content to generate title and tags from.
 
     ### Response Body:
     - **title** (`str`): The suggested title for the post.
     - **tags_list** (`List[str]`): The suggested tags for the post.
     """
-    
-    return {"title": "this is title", "tags_list": ["this is tags list"]}
+    suggestions = SuggestionService().suggest(content=question_data.content)
+    if suggestions is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not generate suggestions now, please try later or contact the support team")
+    return suggestions

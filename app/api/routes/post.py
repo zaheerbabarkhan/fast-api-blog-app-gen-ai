@@ -4,13 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 
 from app.api.deps import SessionDep, get_current_author, CurrentUser, get_current_user
+from app.models.post import PostStatus
 from app.models.user import UserRole
-from app.schemas.post import PostCreate, PostListResponse, PostResponse, PostUpdate
+from app.schemas.post import PostCreate, PostListResponse, PostQuestionAnswerRequest, PostResponse, PostSuggestionsRequest, PostSuggestionsResponse, PostSummaryResponse, PostUpdate
 from app.schemas.comment import CommentCreateRequest, CommentResponse, CommentResponseWithReplies
 from app.api.deps import SessionDep, get_current_author, CurrentUser
 from app.schemas.post import PostCreate, PostResponse, PostUpdate
 from app.crud import post as post_crud
 from app.crud import comment as comment_crud
+from app.services.question_answer.question_answer import QuestionAnswerService
+from app.services.summarization import SummarizationService
 
 
 router = APIRouter(prefix="/posts")
@@ -348,3 +351,82 @@ def update_comment(db: SessionDep, comment_id: str, comment_data: CommentCreateR
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update comment")
     
     return comment_crud.update_comment(db=db, comment=comment, comment_data=comment_data)
+
+
+@router.get("/{post_id}/summarize", response_model=PostSummaryResponse)
+def summarize_post(db: SessionDep, post_id: str):
+    """
+    ## Summarizes a post by its ID.
+
+    This route takes a path parameter that is the post ID and returns a summary of the post.
+
+    ### Path Parameters:
+    - **post_id** (`str`): The ID of the post to summarize.
+
+    ### Raises:
+    - **HTTPException**: If the post ID is not a valid UUID.
+    - **HTTPException**: If the post is not found or is a draft.
+
+    ### Response Body:
+    - **summary** (`str`): The summary of the post.
+    """
+    try:
+        uuid.UUID(post_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
+    
+    post = post_crud.get_post(db=db, post_id=post_id)
+    if post is None or post.status == PostStatus.DRAFT:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    
+    summary = SummarizationService().summarize(content=post.content)
+    return summary
+    
+
+@router.post("/{post_id}/chat")
+def chat_with_post(db: SessionDep, post_id: str, current_user: CurrentUser, question_data: PostQuestionAnswerRequest):
+    """
+    ## Chat with a post.
+
+    This route takes a path parameter that is the post ID and returns a chat interface to interact with the post.
+
+    ### Path Parameters:
+    - **post_id** (`str`): The ID of the post to chat with.
+    """
+
+    try:
+        uuid.UUID(post_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
+    
+    post = post_crud.get_post(db=db, post_id=post_id)
+    if post is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    
+    # Add the question to the chat history
+    try:
+        chat = QuestionAnswerService(user_id=current_user.id, post_id=post_id, post_content=post.content, question=question_data.question)
+        answer = chat.get_answer(question=question_data.question)
+
+        if answer is None:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while processing the question")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while processing the question")
+    return {"answer": answer}
+
+@router.post("/suggest", response_model=PostSuggestionsResponse)
+def suggest_title_tags(db: SessionDep, current_user: CurrentUser, question_data: PostSuggestionsRequest):
+    """
+    ## Suggests title and tags for a post.
+
+    This route takes a content and returns a suggested title and tags for a post.
+
+    ### Request Body:
+    - **question** (`str`): The question to generate title and tags from.
+
+    ### Response Body:
+    - **title** (`str`): The suggested title for the post.
+    - **tags_list** (`List[str]`): The suggested tags for the post.
+    """
+    
+    return {"title": "this is title", "tags_list": ["this is tags list"]}

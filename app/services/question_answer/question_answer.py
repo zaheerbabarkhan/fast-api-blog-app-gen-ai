@@ -4,7 +4,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.runnables import RunnableWithMessageHistory
 
 from app.core.config.llm.llm import LLMService
-from app.genai.services.question_answer.memory import SessionManager
+from app.services.question_answer.memory import SessionManager
 from app.core.config.llm.vector_store import VectorStoreService
 from app.core.config.llm.embeddings import EmbeddingService
 from app.core.config.config import settings
@@ -55,7 +55,7 @@ class QuestionAnswerService:
             "You are an assistant for question-answering tasks. "
             "Use the following pieces of retrieved context to answer "
             "the question. If you don't know the answer, say that you "
-            "don't know. Use three sentences maximum and keep the "
+            "don't know. If the question is out of the context or just a random question then asnwer that this question is not related to the post. Use three sentences maximum and keep the "
             "answer concise."
             "\n\n"
             "{context}"

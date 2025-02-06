@@ -3,10 +3,10 @@ from langchain.chains import create_history_aware_retriever, create_retrieval_ch
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.runnables import RunnableWithMessageHistory
 
-from app.core.config.llm import LLMService
+from app.core.config.llm.llm import LLMService
 from app.genai.services.question_answer.memory import SessionManager
-from app.core.config.vector_store import VectorStoreService
-from app.core.config.embeddings import EmbeddingService
+from app.core.config.llm.vector_store import VectorStoreService
+from app.core.config.llm.embeddings import EmbeddingService
 from app.core.config.config import settings
 
 

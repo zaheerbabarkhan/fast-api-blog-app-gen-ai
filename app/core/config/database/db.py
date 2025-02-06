@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 from app.models.base_model_mixin import BaseModelMixin
 
-from .config import settings
+from ..config import settings
 
 Base = declarative_base()
 

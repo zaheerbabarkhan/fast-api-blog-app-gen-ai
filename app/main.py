@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from app.core.config.config import settings
 from app.api.main import main_router
-from app.core.config.llm import LLMService
+from app.core.config.llm.llm import LLMService
 from app.core.config.config import settings
 
 app = FastAPI(

@@ -3,7 +3,7 @@ from langchain_postgres import PGVector
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
-from app.core.config.embeddings import EmbeddingService
+from app.core.config.llm.embeddings import EmbeddingService
 
 
 class VectorStoreService:

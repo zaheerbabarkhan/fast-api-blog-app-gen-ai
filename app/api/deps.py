@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 import jwt
 
-from app.core.config.db import get_db
+from app.core.config.database.db import get_db
 from app.core.config.config import settings
 from app.core import security
 from app.models.user import UserRole, User, UserStatus

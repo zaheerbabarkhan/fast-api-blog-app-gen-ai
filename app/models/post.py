@@ -8,7 +8,7 @@ from typing import List, Optional, TYPE_CHECKING
 import uuid
 import enum
 
-from app.core.config.db import Base
+from app.core.config.database.db import Base
 from app.models.base_model_mixin import BaseModelMixin
 from app.models.comment import Comment
 

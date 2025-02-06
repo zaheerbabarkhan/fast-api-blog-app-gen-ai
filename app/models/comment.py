@@ -5,7 +5,7 @@ from typing import List, Optional, TYPE_CHECKING
 
 import uuid
 
-from app.core.config.db import Base
+from app.core.config.database.db import Base
 from app.models.base_model_mixin import BaseModelMixin
 
 if TYPE_CHECKING:

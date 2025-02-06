@@ -3,10 +3,12 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 
-from app.api.deps import SessionDep, get_current_admin, get_current_author, CurrentUser, get_current_user
+from app.api.deps import SessionDep, get_current_author, CurrentUser, get_current_user
 from app.models.user import UserRole
 from app.schemas.post import PostCreate, PostListResponse, PostResponse, PostUpdate
 from app.schemas.comment import CommentCreateRequest, CommentResponse, CommentResponseWithReplies
+from app.api.deps import SessionDep, get_current_author, CurrentUser
+from app.schemas.post import PostCreate, PostResponse, PostUpdate
 from app.crud import post as post_crud
 from app.crud import comment as comment_crud
 

@@ -39,7 +39,7 @@ def create_post(db: SessionDep, author : CurrentUser, post_data: PostCreate):
     return post_crud.create_post(db=db, author=author, post_data=post_data)
 
 
-@router.get("/{post_id}", response_model=PostResponse, tags=["Post"])
+@router.get("/{post_id}", response_model=PostResponse, tags=["Public Post"])
 def get_post(db: SessionDep, post_id: str):
     """
     ## Reads a post by its ID.
@@ -120,7 +120,40 @@ def update_post(db: SessionDep, author: CurrentUser, post_id: str, post_data: Po
     return post_crud.update_post(db=db, post=post, post_data=post_data)
 
 
-@router.get("/", response_model=List[PostListResponse], tags=["Post"])
+@router.delete("/{post_id}", tags=["Author"])
+def delete_post(db: SessionDep, current_user: CurrentUser, post_id: str):
+    """
+    ## Deletes a post.
+
+    This route takes a path parameter that is the post ID.
+
+    ### Path Parameters:
+    - **post_id** (`str`): The ID of the post to delete the comment from.
+
+    ### Raises:
+    - **HTTPException**: If the post ID is not a valid UUID.
+    - **HTTPException**: If the post is not found.
+    - **HTTPException**: If the user is not authorized to delete the post.
+    """
+    try:
+        uuid.UUID(post_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
+    
+    post = post_crud.get_post(db=db, post_id=post_id)
+    if post is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    print(current_user.id)
+    print(post.author_id)
+    
+    if post.author_id != current_user.id and current_user.user_role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete post")
+    
+    post_crud.delete_post(db=db, post=post)
+
+    return {"message": "Post deleted successfully"}
+
+@router.get("/", response_model=List[PostListResponse], tags=["Public Post"])
 def get_posts(db: SessionDep):
 
     """
@@ -208,23 +241,20 @@ def get_comments(db: SessionDep, post_id: str):
     return comment_crud.get_post_comments(db=db, post_id=post_id)
 
 
-@router.post("/{post_id}/comments/{comment_id}/reply", response_model=CommentResponse, tags=["Comment"])
+@router.post("/comments/{comment_id}/reply", response_model=CommentResponse, tags=["Comment"])
 def reply_to_comment(db: SessionDep, post_id: str, comment_id: str, comment_data: CommentCreateRequest, current_user: CurrentUser):
     """
     ## Replies to a comment on a post.
 
-    This route takes a path parameter that is the post ID, a path parameter that is the comment ID, and a JSON body that contains the reply data.
+    This route takes a path parameter that is the comment ID, and a JSON body that contains the reply data.
 
     ### Path Parameters:
-    - **post_id** (`str`): The ID of the post to reply to.
     - **comment_id** (`str`): The ID of the comment to reply to.
 
     ### Request Body:
     - **content** (`str`): The content of the reply.
 
     ### Raises:
-    - **HTTPException**: If the post ID is not a valid UUID.
-    - **HTTPException**: If the post is not found.
     - **HTTPException**: If the comment ID is not a valid UUID.
     - **HTTPException**: If the comment is not found.
 
@@ -236,20 +266,6 @@ def reply_to_comment(db: SessionDep, post_id: str, comment_id: str, comment_data
     - **author_id** (`uuid.UUID`): The ID of the author of the reply.
     """
     try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
-    
-    try:
-        uuid.UUID(comment_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment not found")
-
-    post = post_crud.get_post(db=db, post_id=post_id)
-    if post is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    
-    try:
         uuid.UUID(comment_id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment not found")
@@ -258,40 +274,29 @@ def reply_to_comment(db: SessionDep, post_id: str, comment_id: str, comment_data
     if comment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
     
-    return comment_crud.reply_to_comment(db=db, post_id=post_id, parent_comment_id=comment_id, replier=current_user, reply_data=comment_data)
+    return comment_crud.reply_to_comment(db=db, parent_comment=comment, replier=current_user, reply_data=comment_data)
 
 
 @router.delete("/comments/{comment_id}", tags=["Comment"])
-def delete_comment(db: SessionDep, post_id: str, comment_id: str, current_user: CurrentUser):
+def delete_comment(db: SessionDep, comment_id: str, current_user: CurrentUser):
     """
     ## Deletes a comment on a post.
 
-    This route takes a path parameter that is the post ID and a path parameter that is the comment ID.
+    This route takes a path parameter that is the comment ID.
 
     ### Path Parameters:
-    - **post_id** (`str`): The ID of the post to delete the comment from.
     - **comment_id** (`str`): The ID of the comment to delete.
 
     ### Raises:
-    - **HTTPException**: If the post ID is not a valid UUID.
-    - **HTTPException**: If the post is not found.
     - **HTTPException**: If the comment ID is not a valid UUID.
     - **HTTPException**: If the comment is not found.
     - **HTTPException**: If the user is not authorized to delete the comment.
     """
-    try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
     
     try:
         uuid.UUID(comment_id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment not found")
-
-    post = post_crud.get_post(db=db, post_id=post_id)
-    if post is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     
     comment = comment_crud.get_comment(db=db, comment_id=comment_id)
     if comment is None:
@@ -306,22 +311,19 @@ def delete_comment(db: SessionDep, post_id: str, comment_id: str, current_user: 
 
 
 @router.put("/comments/{comment_id}", response_model=CommentResponse, tags=["Comment"])
-def update_comment(db: SessionDep, post_id: str, comment_id: str, comment_data: CommentCreateRequest, current_user: CurrentUser):
+def update_comment(db: SessionDep, comment_id: str, comment_data: CommentCreateRequest, current_user: CurrentUser):
     """
     ## Updates a comment on a post.
 
-    This route takes a path parameter that is the post ID, a path parameter that is the comment ID, and a JSON body that contains the updated comment data.
+    This route takes a path parameter that is the comment ID, and a JSON body that contains the updated comment data.
 
     ### Path Parameters:
-    - **post_id** (`str`): The ID of the post to update the comment on.
     - **comment_id** (`str`): The ID of the comment to update.
 
     ### Request Body:
     - **content** (`str`): The updated content of the comment.
 
     ### Raises:
-    - **HTTPException**: If the post ID is not a valid UUID.
-    - **HTTPException**: If the post is not found.
     - **HTTPException**: If the comment ID is not a valid UUID.
     - **HTTPException**: If the comment is not found.
     - **HTTPException**: If the user is not authorized to update the comment.
@@ -332,19 +334,11 @@ def update_comment(db: SessionDep, post_id: str, comment_id: str, comment_data: 
     - **post_id** (`uuid.UUID`): The ID of the post the updated comment belongs to.
     - **author_id** (`uuid.UUID`): The ID of the author of the updated comment.
     """
-    try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
-    
+
     try:
         uuid.UUID(comment_id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment not found")
-
-    post = post_crud.get_post(db=db, post_id=post_id)
-    if post is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     
     comment = comment_crud.get_comment(db=db, comment_id=comment_id)
     if comment is None:

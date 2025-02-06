@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import CurrentUser
+from app.models.comment import Comment
 from app.models.post import Post, PostStatus
 from app.schemas.post import PostCreate
 
@@ -22,3 +23,9 @@ def update_post(db: Session, post: Post, post_data: PostCreate):
 
 def get_posts(db: Session):
     return db.query(Post).filter(Post.status == PostStatus.PUBLISHED).all()
+
+def delete_post(db: Session, post: Post):
+    post.is_deleted = True
+    db.query(Comment).filter(Comment.post_id == post.id).update({Comment.is_deleted: True}, synchronize_session=False)
+    db.commit()
+    return

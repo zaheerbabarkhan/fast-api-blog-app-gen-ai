@@ -22,10 +22,10 @@ def get_post_comments(db: Session, post_id: str) -> list[Comment]:
 def get_comment(db: Session, comment_id: str) -> Comment:
     return db.query(Comment).filter(Comment.id == comment_id).first()
 
-def reply_to_comment(db: Session, replier: User, parent_comment_id: str, post_id: str, reply_data: CommentCreateRequest) -> Comment:
+def reply_to_comment(db: Session, replier: User, parent_comment: Comment,reply_data: CommentCreateRequest) -> Comment:
     comment = Comment(
-        post_id=post_id,
-        parent_comment_id=parent_comment_id,
+        post_id=parent_comment.post_id,
+        parent_comment_id=parent_comment.id,
         commenter_id=replier.id,
         content=reply_data.content,
     )
@@ -36,8 +36,8 @@ def reply_to_comment(db: Session, replier: User, parent_comment_id: str, post_id
     return comment
 
 def delete_comment(db: Session, comment: Comment):
-    comment.is_deleted = True
-    db.commit()
+    # comment.is_deleted = True
+    # db.commit()
     # Set is_deleted to True for the comment and all its replies in the database
     db.query(Comment).filter(
         (Comment.id == comment.id) | (Comment.parent_comment_id == comment.id)

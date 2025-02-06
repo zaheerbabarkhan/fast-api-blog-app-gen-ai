@@ -5,7 +5,7 @@ from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.crud import user as user_crud
 
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(prefix="/users", tags=["Reader"])
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

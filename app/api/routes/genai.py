@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.api.deps import SessionDep, CurrentUser
 from app.genai.services.question_answer.question_answer import QuestionAnswerService
 from app.genai.services.summarization import SummarizationService
-from app.schemas.post import PostSummaryResponse, PostQuestionAnswerRequest
+from app.schemas.post import PostSuggestionsRequest, PostSuggestionsResponse, PostSummaryResponse, PostQuestionAnswerRequest
 from app.models.post import PostStatus
 from app.crud import post as post_crud
 
@@ -71,3 +71,20 @@ def chat_with_post(db: SessionDep, post_id: str, current_user: CurrentUser, ques
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while processing the question")
     return {"answer": answer}
+
+@router.post("/suggest", response_model=PostSuggestionsResponse)
+def suggest_title_tags(db: SessionDep, current_user: CurrentUser, question_data: PostSuggestionsRequest):
+    """
+    ## Suggests title and tags for a post.
+
+    This route takes a content and returns a suggested title and tags for a post.
+
+    ### Request Body:
+    - **question** (`str`): The question to generate title and tags from.
+
+    ### Response Body:
+    - **title** (`str`): The suggested title for the post.
+    - **tags_list** (`List[str]`): The suggested tags for the post.
+    """
+    
+    return {"title": "this is title", "tags_list": ["this is tags list"]}

@@ -5,7 +5,7 @@ from app.api.deps import SessionDep, LoginFormData
 from app.schemas.user import UserLogin, UserLoginResponse, TokenPayload
 from app.crud import user as user_crud
 from app.core.security import verify_password, create_access_token
-from app.core.config import settings
+from app.core.config.config import settings
 
 router = APIRouter(prefix="/login", tags=["Login"])
 

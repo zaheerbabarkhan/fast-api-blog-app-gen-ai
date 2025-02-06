@@ -1,6 +1,0 @@
-from langchain.output_parsers import PydanticOutputParser
-from app.schemas.post import PostSummaryResponse, PostTitleTagsSuggestionsResponse
-
-summary_res_parser = PydanticOutputParser(pydantic_object=PostSummaryResponse)
-
-title_tags_suggestions_res_parser = PydanticOutputParser(pydantic_object=PostTitleTagsSuggestionsResponse)

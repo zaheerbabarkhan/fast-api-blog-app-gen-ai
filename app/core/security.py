@@ -4,7 +4,7 @@ from app.schemas.user import TokenPayload
 
 import jwt
 
-from app.core.config import settings
+from app.core.config.config import settings
 
 ALGORITHM = "HS256"
 

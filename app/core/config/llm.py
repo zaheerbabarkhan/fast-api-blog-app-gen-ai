@@ -1,6 +1,6 @@
 from langchain_groq import ChatGroq
 
-from app.core.config import settings
+from app.core.config.config import settings
 
 
 class LLMService:

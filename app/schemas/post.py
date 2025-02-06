@@ -49,9 +49,13 @@ class PostListResponse(BaseModel):
 class PostSummaryResponse(BaseModel):
     summary: str
 
-class PostTitleTagsSuggestionsResponse(BaseModel):
+class PostSuggestionsRequest(BaseModel):
+    content: str
+
+class PostSuggestionsResponse(BaseModel):
     title: str
     tags_list: List[str]
 
 class PostQuestionAnswerRequest(BaseModel):
     question: str
+

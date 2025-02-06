@@ -9,7 +9,7 @@ import enum
 
 from app.models.base_model_mixin import BaseModelMixin
 from app.models.post import Post
-from app.core.db import Base
+from app.core.config.db import Base
 
 if TYPE_CHECKING:
     from app.models.comment import Comment

@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 
-from app.genai.llm import LLMService
-from app.genai.prompt_templates import summary_prompt_template
-from app.genai.responses_parsers import summary_res_parser
+from app.core.config.llm import LLMService
+from app.core.config.prompt_templates import summary_prompt_template
+from app.schemas.responses_parsers import summary_res_parser
 
 class SummarizationService:
     def __init__(self):

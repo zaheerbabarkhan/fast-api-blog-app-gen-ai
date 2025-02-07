@@ -8,7 +8,7 @@ from ..config import settings
 
 Base = declarative_base()
 
-engine = create_engine(settings.SQLALCHEMY_DATABASE_URI, echo=True)
+engine = create_engine(settings.SQLALCHEMY_DATABASE_URI, echo=False)
 
 # Create a session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

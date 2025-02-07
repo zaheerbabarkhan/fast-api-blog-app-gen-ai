@@ -14,3 +14,5 @@ class LLMService:
             api_key=settings.GROQ_API_KEY,
         )
 
+    def greet(self):
+        return self.llm.invoke("Say Hi to the user and ask how can you help them")

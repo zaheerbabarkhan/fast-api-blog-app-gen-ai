@@ -39,9 +39,9 @@ class UserCRUD:
             user_data.password = get_password_hash(user_data.password)
             new_user = User(**user_data.model_dump())
 
-            if user_data.user_role.value == UserRole.ADMIN or user_data.user_role.value == UserRole.AUTHOR:
-                new_user.status = UserStatus.IN_ACTIVE.value
-
+            if user_data.user_role == UserRole.ADMIN or user_data.user_role == UserRole.AUTHOR:
+                new_user.status = UserStatus.IN_ACTIVE
+            print("this is new user", new_user)
             new_user = User(**user_data.model_dump())
             self.db.add(new_user)
             self.db.commit()

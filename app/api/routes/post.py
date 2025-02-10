@@ -272,7 +272,7 @@ def delete_comment(comment_id: UUID, current_user: CurrentUser, comment_service:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to delete comment, please try again later or contact support")
 
 @router.put("/comments/{comment_id}", response_model=CommentResponse, tags=["Comment"])
-def update_comment(comment_id: UUID, comment_data: CommentCreateRequest, current_user: CurrentUser, post_service: PostService = Depends()):
+def update_comment(comment_id: UUID, comment_data: CommentCreateRequest, current_user: CurrentUser, comment_service: CommentService = Depends()):
     """
     ## Updates a comment by ID.
 
@@ -296,7 +296,14 @@ def update_comment(comment_id: UUID, comment_data: CommentCreateRequest, current
     - **post_id** (`uuid.UUID`): The ID of the post the comment is associated with.
     """
     try:
-        return post_service.update_comment(comment_id=comment_id, comment_data=comment_data)
+        return comment_service.update_comment(comment_id=comment_id, comment_data=comment_data, current_user=current_user)
+    
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    
+    except ForbiddenException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    
     except AppBaseException as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to update comment, please try again later or contact support")
 

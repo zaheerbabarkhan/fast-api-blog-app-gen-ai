@@ -1,9 +1,9 @@
 from uuid import UUID
 from app.api.deps import SessionDep
-from app.models.user import User
+from app.models.user import User, UserRole, UserStatus
 from app.schemas.user import UserCreate, UserUpdate
 from app.crud.user import UserCRUD
-from app.exceptions.exceptions import ResourceNotFoundException, AppBaseException, ResourceAlreadyExistsException
+from app.exceptions.exceptions import DatabaseExeption, ForbiddenException, ResourceNotFoundException, AppBaseException, ResourceAlreadyExistsException
 import logging
 
 logger = logging.getLogger(__name__)
@@ -115,28 +115,56 @@ class UserService:
         """
         try:
             return self.user_crud.get_users()
-        except AppBaseException :
-            raise
+        except DatabaseExeption as e:
+            raise AppBaseException("Cannot get users") from e
 
-    def delete_user(self, user_id: UUID) -> User:
+    
+    def activate_user(self, user_id: UUID, current_admin: User) -> User:
         """
-        Delete a user by their ID.
+        Activate a user.
 
         Args:
-            user_id (UUID): The UUID of the user to delete
+            user_id (UUID): The UUID of the user to activate
+
+        Returns:
+            User: The activated User object
 
         Raises:
             ResourceNotFoundException: If the user is not found
+            ResourceAlreadyExistsException: If the user is already active
+            ForbiddenException: If the current admin does not have permission to activate the user
             DatabaseException: If there is an error in the database operation
         """
         try:
             user = self.user_crud.get_user(user_id)
             if not user:
+                logger.error(f"User with id {user_id} not found")
                 raise ResourceNotFoundException("User not found")
             
-            return self.user_crud.delete_user(user)
+            if user.status == UserStatus.ACTIVE.value:
+                logger.error(f"User with id {user_id} is already active")
+                raise ResourceAlreadyExistsException("User already active")
+                
+            if user.user_role == UserRole.ADMIN and current_admin.user_role != UserRole.SUPER_ADMIN:
+                logger.error(f"User with id {current_admin.id} does not have permission to activate admin user with id {user_id}")
+                raise ForbiddenException("Only super admin can activate admin")
+            
+            activated_user = self.user_crud.activate_user(user)
+            logger.info(f"User with id {user_id} has been activated by admin with id {current_admin.id}")
+            return activated_user
         
-        except ResourceNotFoundException:
+        except ResourceNotFoundException as e:
+            logger.error(f"ResourceNotFoundException: {str(e)}")
             raise
-        except AppBaseException:
+
+        except ResourceAlreadyExistsException as e:
+            logger.error(f"ResourceAlreadyExistsException: {str(e)}")
             raise
+
+        except ForbiddenException as e:
+            logger.error(f"ForbiddenException: {str(e)}")
+            raise
+
+        except DatabaseExeption as e:
+            logger.error(f"DatabaseExeption: {str(e)}")
+            raise AppBaseException("Cannot activate user") from e

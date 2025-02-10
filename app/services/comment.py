@@ -185,17 +185,22 @@ class CommentService:
         try:
             logger.info(f"Updating comment {comment_id} by user {current_user.id}")
             comment = self.get_comment(comment_id)
+            
             if comment.commenter_id != current_user.id and current_user.user_role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
                 raise ForbiddenException("You are not authorized to update this comment")
+            
             comment.content = comment_data.content
             self.db.commit()
             self.db.refresh(comment)
             return comment
+        
         except ResourceNotFoundException as e:
             logger.warning(f"Comment {comment_id} not found: {str(e)}")
             raise
+        
         except ForbiddenException as e:
             logger.warning(f"User {current_user.id} not authorized to update comment {comment_id}: {str(e)}")
             raise
+        
         except DatabaseExeption as e:
             raise AppBaseException("Cannot update comment") from e

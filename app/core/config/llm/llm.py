@@ -3,7 +3,7 @@ import logging
 from langchain_groq import ChatGroq
 
 from app.core.config.config import settings
-from app.exceptions.exceptions import AppBaseException
+from app.exceptions.exceptions import LLMInitializationException
 
 logger = logging.getLogger(__name__)
 class LLMService:
@@ -19,7 +19,7 @@ class LLMService:
             )
         except Exception as e:
             logger.exception("Failed to initialize ChatGroq: %s", e)
-            raise AppBaseException("Failed to initialize ChatGroq") from e
+            raise LLMInitializationException("Failed to initialize ChatGroq") from e
 
     def greet(self):
         if (self.llm is None):

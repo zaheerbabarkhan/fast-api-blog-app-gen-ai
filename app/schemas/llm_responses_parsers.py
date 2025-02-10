@@ -1,6 +1,8 @@
 from langchain.output_parsers import PydanticOutputParser
-from app.schemas.post import PostSummaryResponse, PostSuggestionsResponse
+from app.schemas.post import CommentAnalysisResponse, PostSummaryResponse, PostSuggestionsResponse
 
 summary_res_parser = PydanticOutputParser(pydantic_object=PostSummaryResponse)
 
 suggestions_res_parser = PydanticOutputParser(pydantic_object=PostSuggestionsResponse)
+
+comment_analysis_res_parser = PydanticOutputParser(pydantic_object=CommentAnalysisResponse)

@@ -15,7 +15,7 @@ class CommentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     parent_comment_id: Optional[uuid.UUID] = None
-    
+    sentiment: str
     
 class CommentResponseWithReplies(CommentResponse):
     replies: Optional[List[CommentResponse]] = None

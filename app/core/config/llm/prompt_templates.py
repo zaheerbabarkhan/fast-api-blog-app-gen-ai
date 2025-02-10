@@ -1,6 +1,8 @@
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain.prompts import ChatPromptTemplate
 
+from app.models.comment import SentimentEnum
+
 def summary_prompt_template():
     system_message = SystemMessage(
         content="You are an AI assistant that summarizes blog posts. "
@@ -37,6 +39,23 @@ def suggestion_prompt_template():
         content="<Content>{content}</Content>"
         )
     
+    raw_prompt = ChatPromptTemplate.from_messages([
+        ("system", system_message.content),  
+        ("user", human_message.content)      
+        ])
+    
+    return raw_prompt
+
+def comment_analysis_template():
+    system_message = SystemMessage(
+        content="You are a sentiment analysis AI that classifies user comments into three categories:"
+                "positive: The comment expresses a favorable opinion about the post."
+                "negative: The comment expresses an unfavorable opinion about the post."
+                "inappropriate: The comment contains offensive, harmful, or inappropriate language."
+                "Your task is to analyze the given comment and respond in **valid JSON format** "
+                f"with a single key 'sentiment' and the value as one of the three categories: '{SentimentEnum.POSITIVE}', '{SentimentEnum.NEGATIVE}', or '{SentimentEnum.INAPPROPRIATE}'.")
+    human_message = HumanMessage(content="<Comment>{comment}</Comment>")
+
     raw_prompt = ChatPromptTemplate.from_messages([
         ("system", system_message.content),  
         ("user", human_message.content)      

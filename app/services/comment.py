@@ -10,7 +10,8 @@ from app.models.comment import Comment
 from app.models.user import User, UserRole
 from app.schemas.comment import CommentCreateRequest
 from app.crud.comment import CommentCRUD
-from app.exceptions.exceptions import AppBaseException, ForbiddenException, ResourceNotFoundException, DatabaseExeption
+from app.exceptions.exceptions import AppBaseException, ForbiddenException, ResourceNotFoundException, DatabaseExeption, SentimentAnalysisInitException, SentimentInvokeException
+from app.services.comment_analysis import CommentAnalysisService
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +47,21 @@ class CommentService:
         Raises:
             DatabaseException: If there is an error in the database operation
         """
+        
+        sentiment = None
+        try:
+            comment_analysis_service = CommentAnalysisService()
+            sentiment_response = comment_analysis_service.sentiment_analysis(comment_data.content)
+            sentiment = sentiment_response.sentiment if sentiment_response else None
+        except SentimentAnalysisInitException:
+            logger.warning("Sentiment analysis service is not available")
+        
+        except SentimentInvokeException:
+            logger.warning("Failed to analyze comment sentiment")
+        
         try:
             logger.info(f"Creating a new comment for post {post_id} by user {author.id}")
-            return self.comment_crud.create_comment(commenter=author, post_id=str(post_id), comment_data=comment_data)
+            return self.comment_crud.create_comment(commenter=author, post_id=str(post_id), comment_data=comment_data, sentiment=sentiment)
         except DatabaseExeption as e:
             logger.error(f"Error while creating comment: {str(e)}")
             raise AppBaseException("Cannot create comment") from e

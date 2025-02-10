@@ -36,10 +36,18 @@ class LLMServiceInvokeException(AppBaseException):
     def __init__(self, message: str = 'LLM service is not available'):
         super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-class SummarizationServiceNotAvailableException(AppBaseException):
+class SummarizationException(AppBaseException):
     def __init__(self, message: str = 'Summarization service is not available'):
         super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-class LLMServiceInitializationException(AppBaseException):
+class SentimentAnalysisInitException(AppBaseException):
+    def __init__(self, message: str = 'Sentiment analysis service is not available'):
+        super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+class LLMInitializationException(AppBaseException):
     def __init__(self, message: str = 'Failed to initialize ChatGroq'):
+        super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class SentimentInvokeException(AppBaseException):
+    def __init__(self, message: str = 'Failed to invoke ChatGroq'):
         super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

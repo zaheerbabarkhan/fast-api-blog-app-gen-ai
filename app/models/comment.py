@@ -14,10 +14,10 @@ if TYPE_CHECKING:
     from app.models.post import Post
 
 class SentimentEnum(str, Enum):
-    POSITIVE = "Positive"
-    NEGATIVE = "Negative"
-    INAPPROPRIATE = "Inappropriate"
-    NOT_ANALYZED = "Not Analyzed"
+    POSITIVE = "POSITIVE"
+    NEGATIVE = "NEGATIVE"
+    INAPPROPRIATE = "INAPPROPRIATE"
+    NOT_ANALYZED = "NOT_ANALYZED"
 
 class Comment(Base, BaseModelMixin):
     __tablename__ = 'comments'

@@ -59,3 +59,5 @@ class PostSuggestionsResponse(BaseModel):
 class PostQuestionAnswerRequest(BaseModel):
     question: str
 
+class CommentAnalysisResponse(BaseModel):
+    sentiment: str

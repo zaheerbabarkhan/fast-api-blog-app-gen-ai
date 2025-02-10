@@ -1,6 +1,6 @@
 import logging
 from sqlalchemy.orm import Session, joinedload
-from app.models.comment import Comment
+from app.models.comment import Comment, SentimentEnum
 from app.models.user import User
 from app.schemas.comment import CommentCreateRequest
 from app.exceptions.exceptions import DatabaseExeption
@@ -21,7 +21,7 @@ class CommentCRUD:
         """
         self.db = db
 
-    def create_comment(self, commenter: User, post_id: str, comment_data: CommentCreateRequest) -> Comment:
+    def create_comment(self, commenter: User, post_id: str, comment_data: CommentCreateRequest, sentiment = None) -> Comment:
         """
         Create a new comment.
         
@@ -41,6 +41,7 @@ class CommentCRUD:
                 post_id=post_id,
                 commenter_id=commenter.id,
                 content=comment_data.content,
+                sentiment=sentiment
             )
             self.db.add(comment)
             self.db.commit()
@@ -64,7 +65,7 @@ class CommentCRUD:
             DatabaseException: If there is an error while fetching the comments.
         """
         try:
-            return self.db.query(Comment).options(joinedload(Comment.replies)).filter(Comment.post_id == post_id).all()
+            return self.db.query(Comment).options(joinedload(Comment.replies)).filter(Comment.post_id == post_id, Comment.sentiment != SentimentEnum.INAPPROPRIATE).all()
         except Exception as e:
             logger.exception("Database error while fetching comments for post with id %s", post_id)
             raise DatabaseExeption("Internal database error") from e

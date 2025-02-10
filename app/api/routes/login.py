@@ -1,22 +1,39 @@
-from datetime import timedelta
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.deps import SessionDep, LoginFormData
-from app.schemas.user import UserLogin, UserLoginResponse, TokenPayload
-from app.crud import user as user_crud
-from app.core.security import verify_password, create_access_token
-from app.core.config.config import settings
+from app.api.deps import LoginFormData
+from app.schemas.user import UserLoginResponse
+from app.services.login import LoginService
+from app.exceptions.exceptions import UnauthorizedException, AppBaseException, AppBaseException
 
 router = APIRouter(prefix="/login", tags=["Login"])
 
 @router.post("/access-token", response_model=UserLoginResponse)
-async def login(db: SessionDep, login_data: LoginFormData):
+async def login(login_data: LoginFormData, login_service: LoginService = Depends()):
+    """
+    ## Authenticate a user and generate an access token.
 
-    user = user_crud.get_user_by_email(db=db, email=login_data.username)
-    if user is None or not verify_password(login_data.password, user.password):
-        raise HTTPException(status_code=400, detail="Invalid creds, please try again");
+    This route takes a JSON body that contains the login data.
 
-    token_expiry_time = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    token_payload = TokenPayload(user_id=str(user.id))
+    ### Request Body:
+    - **username** (`str`): The username of the user.
+    - **password** (`str`): The password of the user.
+
+    ### Raises:
+    - **HTTPException**: If the username or password is incorrect.
+    - **HTTPException**: If there is a database error.
+
+    ### Response Body:
+    - **access_token** (`str`): The access token for the authenticated user.
+    - **token_type** (`str`): The type of the token, which is "bearer".
+    """
+    try:
+        return login_service.login(login_data=login_data)
     
-    return UserLoginResponse(access_token=create_access_token(token_payload.model_dump(), token_expiry_time))
+    except UnauthorizedException as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

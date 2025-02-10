@@ -8,41 +8,38 @@ LOGGING_CONFIG = {
         "default": {
             "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         },
-        "detailed": {
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s [%(filename)s:%(lineno)d]",
+        "access": {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         },
     },
     "handlers": {
-        "console": {
+        "default": {
             "class": "logging.StreamHandler",
             "formatter": "default",
+            "stream": "ext://sys.stderr",
         },
-        "file": {
-            "class": "logging.FileHandler",
-            "formatter": "detailed",
-            "filename": "app.log",
+        "access": {
+            "class": "logging.StreamHandler",
+            "formatter": "access",
+            "stream": "ext://sys.stdout",
+        },
+    },
+    "loggers": {
+        "uvicorn.error": {
+            "level": "INFO",
+            "handlers": ["default"],
+            "propagate": False,
+        },
+        "uvicorn.access": {
+            "level": "INFO",
+            "handlers": ["access"],
+            "propagate": False,
         },
     },
     "root": {
-        "level": "INFO",
-        "handlers": ["console", "file"],
-    },
-    "loggers": {
-        "uvicorn": {
-            "level": "INFO",
-            "handlers": ["console", "file"],
-            "propagate": False,
-        },
-        "app": {
-            "level": "DEBUG",
-            "handlers": ["console", "file"],
-            "propagate": False,
-        },
-        "llm": {
-            "level": "DEBUG",
-            "handlers": ["console", "file"],
-            "propagate": False,
-        },
+        "level": "DEBUG",
+        "handlers": ["default"],
+        "propagate": False,
     },
 }
 

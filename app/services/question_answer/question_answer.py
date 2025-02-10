@@ -1,3 +1,4 @@
+from uuid import UUID
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -11,9 +12,9 @@ from app.core.config.config import settings
 
 
 class QuestionAnswerService:
-    def __init__(self, post_id: str, user_id: str, question: str, post_content: str):
-        self.post_id = post_id
-        self.user_id = user_id
+    def __init__(self, post_id: UUID, user_id: UUID, question: str, post_content: str):
+        self.post_id = str(post_id)
+        self.user_id = str(user_id)
         self.question = question
         self.post_content = post_content
         self.session_manager = SessionManager()
@@ -24,7 +25,7 @@ class QuestionAnswerService:
             embedding_service=embedder,
         )
 
-        self.vector_store_service.store_blog_post(blog_post_id=post_id, content=self.post_content)
+        self.vector_store_service.store_blog_post(blog_post_id=self.post_id, content=self.post_content)
         self.llm_service = LLMService(temperature=0.3)
 
     

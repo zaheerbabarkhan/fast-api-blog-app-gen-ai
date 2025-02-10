@@ -1,3 +1,4 @@
+import json
 import logging
 import traceback
 from typing import Union
@@ -62,9 +63,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         request.state.req_id = request_id
 
         request_body = await request.body()
-        print("this is request body", request_body)
-        request.state.body = request_body.decode("utf-8") if request_body else None
-        print("this is request state body", request.state.body)
+        try:
+            request.state.body = json.loads(request_body.decode("utf-8")) if request_body else None
+        except json.JSONDecodeError:
+            request.state.body = None
 
         try:
             # Log the request
@@ -80,7 +82,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 headers=request_info.headers,
                 duration_ms=0.0  # Placeholder, will be updated after response
             )
-            logger.info(request_log.model_dump())
+            
 
             # Process the request
             start_time = time.perf_counter()
@@ -91,7 +93,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             process_time = time.perf_counter() - start_time
             duration_ms = process_time * 1000
             request_log.duration_ms = duration_ms
-            logger.info(f"Request {request_id} processed in {duration_ms:.2f} ms")
+            logger.info(request_log.model_dump())
 
             return response
 

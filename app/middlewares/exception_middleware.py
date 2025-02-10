@@ -12,6 +12,7 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
         except Exception as exc:
+            print("this si coming from here")
             logger.error(f"Unhandled exception: {exc}")
             logger.error(traceback.format_exc())
             return JSONResponse(

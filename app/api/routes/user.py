@@ -1,15 +1,16 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import SessionDep, CurrentUser
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.crud import user as user_crud
-
+from app.services.user import UserService
+from app.exceptions.exceptions import ResourceNotFoundException, AppBaseException, ResourceAlreadyExistsException
 
 router = APIRouter(prefix="/users", tags=["Reader"])
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(db: SessionDep, user_data: UserCreate):
+async def create_user(user_data: UserCreate, user_service: UserService = Depends()):
     """
     ## Creates a new user.
 
@@ -24,6 +25,7 @@ async def create_user(db: SessionDep, user_data: UserCreate):
 
     ### Raises:
     - **HTTPException**: If the email is already registered.
+    - **HTTPException**: If there is a database error.
 
     ### Response Body:
     - **id** (`uuid.UUID`): The ID of the created user.
@@ -33,11 +35,15 @@ async def create_user(db: SessionDep, user_data: UserCreate):
     - **user_role** (`UserRole`): The role of the created user. Possible values: `SUPER_ADMIN`, `ADMIN`, `AUTHOR`, `READER`.
     - **status** (`UserStatus`): The status of the created user.
     """
-    user = user_crud.get_user_by_email(db=db, email=user_data.email)
 
-    if user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered.")
-    return user_crud.create_user(db=db, user=user_data)
+    try:
+        return user_service.create_user(user_data=user_data)
+    
+    except ResourceAlreadyExistsException as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    
+    except AppBaseException:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to create user. Please try again later or contact support.")
 
 
 @router.get("/me", response_model=UserResponse)
@@ -59,7 +65,7 @@ async def read_user_me(current_user: CurrentUser):
 
 
 @router.patch("/me", response_model=UserResponse)
-async def update_user(db: SessionDep, current_user: CurrentUser, update_data: UserUpdate):
+async def update_user(current_user: CurrentUser, update_data: UserUpdate, user_service: UserService = Depends()):
     """
     ## Updates the current authenticated user.
 
@@ -81,10 +87,15 @@ async def update_user(db: SessionDep, current_user: CurrentUser, update_data: Us
     - **user_role** (`UserRole`): The role of the updated user. Possible values: `SUPER_ADMIN`, `ADMIN`, `AUTHOR`, `READER`.
     - **status** (`UserStatus`): The status of the updated user.
     """
-    if update_data.email:
-        existing_user = user_crud.get_user_by_email(db=db, email=update_data.email)
-        if existing_user and existing_user.id != current_user.id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered.")
+    try:
+        return user_service.update_user(user=current_user, update_data=update_data)
     
-    return user_crud.update_user(db=db, current_user=current_user, update_data=update_data)
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    
+    except ResourceAlreadyExistsException as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    
+    except AppBaseException:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to update user. Please try again later or contact support.")
 

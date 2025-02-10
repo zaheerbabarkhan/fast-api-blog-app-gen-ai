@@ -1,26 +1,23 @@
-import uuid
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
+from uuid import UUID
 
-from app.api.deps import SessionDep, get_current_author, CurrentUser, get_current_user
-from app.models.post import PostStatus
-from app.models.user import UserRole
+from fastapi.responses import JSONResponse
+
+from app.api.deps import get_current_author, CurrentUser, get_current_user
+from app.exceptions.exceptions import AppBaseException, ForbiddenException, ResourceNotFoundException
 from app.schemas.post import PostCreate, PostListResponse, PostQuestionAnswerRequest, PostResponse, PostSuggestionsRequest, PostSuggestionsResponse, PostSummaryResponse, PostUpdate
 from app.schemas.comment import CommentCreateRequest, CommentResponse, CommentResponseWithReplies
-from app.api.deps import SessionDep, get_current_author, CurrentUser
-from app.schemas.post import PostCreate, PostResponse, PostUpdate
-from app.crud import post as post_crud
-from app.crud import comment as comment_crud
+from app.services.comment import CommentService
+from app.services.post import PostService
 from app.services.question_answer.question_answer import QuestionAnswerService
 from app.services.suggestion import SuggestionService
 from app.services.summarization import SummarizationService
 
-
 router = APIRouter(prefix="/posts")
 
-@router.post("/",dependencies=[Depends(get_current_author)], status_code=status.HTTP_201_CREATED, response_model=PostResponse, tags=["Author"])
-def create_post(db: SessionDep, author : CurrentUser, post_data: PostCreate):
+@router.post("/", dependencies=[Depends(get_current_author)], status_code=status.HTTP_201_CREATED, response_model=PostResponse, tags=["Author"])
+def create_post(post_data: PostCreate, author: CurrentUser, post_service: PostService = Depends()):
     """
     ## Creates a new post.
 
@@ -40,18 +37,20 @@ def create_post(db: SessionDep, author : CurrentUser, post_data: PostCreate):
     - **status** (`PostStatus`): The status of the post. Possible values are `DRAFT` or `PUBLISHED`.
     - **author_id** (`uuid.UUID`): The ID of the author of the created post.
     """
-    return post_crud.create_post(db=db, author=author, post_data=post_data)
-
+    try:
+        return post_service.create_post(author=author, post_data=post_data)
+    except AppBaseException:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to fetch posts, please try again later or contact support")
 
 @router.get("/{post_id}", response_model=PostResponse, tags=["Public Post"])
-def get_post(db: SessionDep, post_id: str):
+def get_post(post_id: UUID, post_service: PostService = Depends()):
     """
-    ## Reads a post by its ID.
+    ## Fetches a post by ID.
 
-    This route takes a path parameter that is the post ID.
+    This route takes a post ID as a path parameter.
 
-    ### Path:
-    - **post_id** (`str`): The ID of the post to read.
+    ### Path Parameters:
+    - **post_id** (`uuid.UUID`): The ID of the post to fetch.
 
     ### Raises:
     - **HTTPException**: If the post ID is not a valid UUID.
@@ -59,80 +58,60 @@ def get_post(db: SessionDep, post_id: str):
     - **HTTPException**: If the post status is DRAFT.
 
     ### Response Body:
-    - **id** (`uuid.UUID`): The ID of the post.
-    - **title** (`str`): The title of the post.
-    - **content** (`str`): The content of the post.
-    - **tags_list** (`Optional[List[str]]`): The list of tags for the post.
-    - **status** (`PostStatus`): The status of the post.
-    - **author_id** (`uuid.UUID`): The ID of the author of the post.
+    - **id** (`uuid.UUID`): The ID of the fetched post.
+    - **title** (`str`): The title of the fetched post.
+    - **content** (`str`): The content of the fetched post.
+    - **tags_list** (`Optional[List[str]]`): The list of tags for the fetched post.
+    - **status** (`PostStatus`): The status of the post. Possible values are `DRAFT` or `PUBLISHED`.
+    - **author_id** (`uuid.UUID`): The ID of the author of the fetched post.
     """
-
     try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
-    
-    post = post_crud.get_post(db=db, post_id=post_id)
-
-    if post is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    
-    return post
-
+        return post_service.get_post(post_id=post_id)
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to fetch post, please try again later or contact support")
 
 @router.put("/{post_id}", response_model=PostResponse, dependencies=[Depends(get_current_author)], tags=["Author"])
-def update_post(db: SessionDep, author: CurrentUser, post_id: str, post_data: PostUpdate):
+def update_post(post_id: UUID, post_data: PostUpdate, post_service: PostService = Depends()):
     """
-    ## Updates a post by its ID.
+    ## Updates a post by ID.
 
-    This route takes a path parameter that is the post ID and a JSON body that contains the updated post data.
+    This route takes a post ID as a path parameter and a JSON body that contains the updated post data.
 
-    ### Path:
-    - **post_id** (`str`): The ID of the post to update.
+    ### Path Parameters:
+    - **post_id** (`uuid.UUID`): The ID of the post to update.
 
     ### Request Body:
     - **title** (`Optional[str]`): The updated title of the post.
     - **content** (`Optional[str]`): The updated content of the post.
     - **tags_list** (`Optional[List[str]]`): The updated list of tags for the post.
-    - **status** (`Optional[PostStatus]`): The updated status of the post.
-
-    ### Raises:
-    - **HTTPException**: If the post ID is not a valid UUID.
-    - **HTTPException**: If the post is not found.
-    - **HTTPException**: If the user is not authorized to update the post.
+    - **status** (`Optional[PostStatus]`): The updated status of the post. Possible values are `DRAFT` or `PUBLISHED`.
 
     ### Response Body:
     - **id** (`uuid.UUID`): The ID of the updated post.
     - **title** (`str`): The title of the updated post.
     - **content** (`str`): The content of the updated post.
     - **tags_list** (`Optional[List[str]]`): The list of tags for the updated post.
-    - **status** (`PostStatus`): The status of the updated post.
+    - **status** (`PostStatus`): The status of the post. Possible values are `DRAFT` or `PUBLISHED`.
     - **author_id** (`uuid.UUID`): The ID of the author of the updated post.
     """
     try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
-    
-    post = post_crud.get_post(db=db, post_id=post_id)
-    if post is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    
-    if post.author_id != author.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update post")
-    
-    return post_crud.update_post(db=db, post=post, post_data=post_data)
+        return post_service.update_post(post_id=post_id, post_data=post_data)
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to update post, please try again later or contact support")
 
-
-@router.delete("/{post_id}", tags=["Author"])
-def delete_post(db: SessionDep, current_user: CurrentUser, post_id: str):
+@router.delete("/{post_id}", tags=["Author"], response_model=PostResponse)
+def delete_post(post_id: UUID, current_user: CurrentUser, post_service: PostService = Depends()):
     """
-    ## Deletes a post.
+    ## Deletes a post by ID.
 
-    This route takes a path parameter that is the post ID.
+    This route takes a post ID as a path parameter.
 
     ### Path Parameters:
-    - **post_id** (`str`): The ID of the post to delete the comment from.
+    - **post_id** (`uuid.UUID`): The ID of the post to delete.
 
     ### Raises:
     - **HTTPException**: If the post ID is not a valid UUID.
@@ -140,28 +119,20 @@ def delete_post(db: SessionDep, current_user: CurrentUser, post_id: str):
     - **HTTPException**: If the user is not authorized to delete the post.
     """
     try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
-    
-    post = post_crud.get_post(db=db, post_id=post_id)
-    if post is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    print(current_user.id)
-    print(post.author_id)
-    
-    if post.author_id != current_user.id and current_user.user_role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete post")
-    
-    post_crud.delete_post(db=db, post=post)
+        post_service.delete_post(post_id=post_id, current_user=current_user)
 
-    return {"message": "Post deleted successfully"}
+        return JSONResponse("Post deleted successfully", status_code=status.HTTP_200_OK)
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ForbiddenException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to delete post, please try again later or contact support")
 
 @router.get("/", response_model=List[PostListResponse], tags=["Public Post"])
-def get_posts(db: SessionDep):
-
+def get_posts(post_service: PostService = Depends()):
     """
-    ## Reads all published posts.
+    ## Fetches all posts.
 
     This route does not take any parameters.
 
@@ -174,18 +145,20 @@ def get_posts(db: SessionDep):
         - **status** (`PostStatus`): The status of the post.
         - **author_id** (`uuid.UUID`): The ID of the author of the post.
     """
-    return post_crud.get_posts(db=db)
-
+    try:
+        return post_service.get_posts()
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to fetch posts, please try again later or contact support")
 
 @router.post("/{post_id}/comments", response_model=CommentResponse, tags=["Comment"])
-def create_comment(db: SessionDep, post_id: str, comment_data: CommentCreateRequest, current_user: CurrentUser):
+def create_comment(post_id: UUID, comment_data: CommentCreateRequest, current_user: CurrentUser, comment_service: CommentService = Depends()):
     """
     ## Creates a new comment on a post.
 
-    This route takes a path parameter that is the post ID and a JSON body that contains the comment data.
+    This route takes a post ID as a path parameter and a JSON body that contains the comment data.
 
     ### Path Parameters:
-    - **post_id** (`str`): The ID of the post to comment on.
+    - **post_id** (`uuid.UUID`): The ID of the post to comment on.
 
     ### Request Body:
     - **content** (`str`): The content of the comment.
@@ -194,33 +167,26 @@ def create_comment(db: SessionDep, post_id: str, comment_data: CommentCreateRequ
     - **HTTPException**: If the post ID is not a valid UUID.
     - **HTTPException**: If the post is not found.
 
-    ### Response:
-    - **id** (`uuid.UUID`): The ID of the comment.
-    - **content** (`str`): The content of the comment.
-    - **post_id** (`uuid.UUID`): The ID of the post the comment belongs to.
-    - **author_id** (`uuid.UUID`): The ID of the author of the comment.
+    ### Response Body:
+    - **id** (`uuid.UUID`): The ID of the created comment.
+    - **content** (`str`): The content of the created comment.
+    - **author_id** (`uuid.UUID`): The ID of the author of the created comment.
+    - **post_id** (`uuid.UUID`): The ID of the post the comment is associated with.
     """
     try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
-    
-    post = post_crud.get_post(db=db, post_id=post_id)
-    if post is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    
-    return comment_crud.create_comment(db=db, post_id=post_id, commenter=current_user, comment_data=comment_data)
-
+        return comment_service.create_comment(post_id=post_id, comment_data=comment_data, author=current_user)
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to add comment, please try again later or contact support")
 
 @router.get("/{post_id}/comments", response_model=List[CommentResponseWithReplies], tags=["Comment"], dependencies=[Depends(get_current_user)])
-def get_comments(db: SessionDep, post_id: str):
+def get_comments(post_id: UUID, comment_service: CommentService = Depends()):
     """
-    ## Reads all comments on a post.
+    ## Fetches all comments on a post.
 
-    This route takes a path parameter that is the post ID.
+    This route takes a post ID as a path parameter.
 
     ### Path Parameters:
-    - **post_id** (`str`): The ID of the post to read comments from.
+    - **post_id** (`uuid.UUID`): The ID of the post to fetch comments for.
 
     ### Raises:
     - **HTTPException**: If the post ID is not a valid UUID.
@@ -234,26 +200,24 @@ def get_comments(db: SessionDep, post_id: str):
         - **author_id** (`uuid.UUID`): The ID of the author of the comment.
     """
     try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
+        return comment_service.get_post_comments(post_id=post_id)
     
-    post = post_crud.get_post(db=db, post_id=post_id)
-    if post is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     
-    return comment_crud.get_post_comments(db=db, post_id=post_id)
-
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to fetch comments, please try again later or contact support")
 
 @router.post("/comments/{comment_id}/reply", response_model=CommentResponse, tags=["Comment"])
-def reply_to_comment(db: SessionDep, post_id: str, comment_id: str, comment_data: CommentCreateRequest, current_user: CurrentUser):
+def reply_to_comment(comment_id: UUID, comment_data: CommentCreateRequest, current_user: CurrentUser, comment_service: CommentService = Depends()):
     """
     ## Replies to a comment on a post.
 
-    This route takes a path parameter that is the comment ID, and a JSON body that contains the reply data.
+    This route takes a post ID and a comment ID as path parameters and a JSON body that contains the reply data.
 
     ### Path Parameters:
-    - **comment_id** (`str`): The ID of the comment to reply to.
+    - **post_id** (`uuid.UUID`): The ID of the post the comment is associated with.
+    - **comment_id** (`uuid.UUID`): The ID of the comment to reply to.
 
     ### Request Body:
     - **content** (`str`): The content of the reply.
@@ -262,67 +226,60 @@ def reply_to_comment(db: SessionDep, post_id: str, comment_id: str, comment_data
     - **HTTPException**: If the comment ID is not a valid UUID.
     - **HTTPException**: If the comment is not found.
 
-    ### Response:
-    - **id** (`uuid.UUID`): The ID of the reply.
-    - **content** (`str`): The content of the reply.
-    - **post_id** (`uuid.UUID`): The ID of the post the reply belongs to.
-    - **comment_id** (`uuid.UUID`): The ID of the comment the reply belongs to.
-    - **author_id** (`uuid.UUID`): The ID of the author of the reply.
+    ### Response Body:
+    - **id** (`uuid.UUID`): The ID of the created reply.
+    - **content** (`str`): The content of the created reply.
+    - **author_id** (`uuid.UUID`): The ID of the author of the created reply.
+    - **post_id** (`uuid.UUID`): The ID of the post the reply is associated with.
+    - **parent_comment_id** (`uuid.UUID`): The ID of the parent comment.
     """
     try:
-        uuid.UUID(comment_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment not found")
+        return comment_service.reply_to_comment(comment_id=comment_id, reply_data=comment_data, author=current_user)
     
-    comment = comment_crud.get_comment(db=db, comment_id=comment_id)
-    if comment is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     
-    return comment_crud.reply_to_comment(db=db, parent_comment=comment, replier=current_user, reply_data=comment_data)
-
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to reply to comment, please try again later or contact support")
 
 @router.delete("/comments/{comment_id}", tags=["Comment"])
-def delete_comment(db: SessionDep, comment_id: str, current_user: CurrentUser):
+def delete_comment(comment_id: UUID, current_user: CurrentUser, comment_service: CommentService = Depends()):
     """
-    ## Deletes a comment on a post.
+    ## Deletes a comment by ID.
 
-    This route takes a path parameter that is the comment ID.
+    This route takes a comment ID as a path parameter.
 
     ### Path Parameters:
-    - **comment_id** (`str`): The ID of the comment to delete.
+    - **comment_id** (`uuid.UUID`): The ID of the comment to delete.
 
     ### Raises:
     - **HTTPException**: If the comment ID is not a valid UUID.
     - **HTTPException**: If the comment is not found.
     - **HTTPException**: If the user is not authorized to delete the comment.
     """
-    
     try:
-        uuid.UUID(comment_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment not found")
-    
-    comment = comment_crud.get_comment(db=db, comment_id=comment_id)
-    if comment is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
-    
-    if comment.commenter_id != current_user.id and current_user.user_role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete comment")
-    
-    comment_crud.delete_comment(db=db, comment=comment)
+        comment_service.delete_comment(comment_id=comment_id, current_user=current_user)
 
-    return {"message": "Comment deleted successfully"}
-
+        return JSONResponse("Comment deleted successfully", status_code=status.HTTP_200_OK)
+    
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        
+    except ForbiddenException as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to delete comment, please try again later or contact support")
 
 @router.put("/comments/{comment_id}", response_model=CommentResponse, tags=["Comment"])
-def update_comment(db: SessionDep, comment_id: str, comment_data: CommentCreateRequest, current_user: CurrentUser):
+def update_comment(comment_id: UUID, comment_data: CommentCreateRequest, current_user: CurrentUser, post_service: PostService = Depends()):
     """
-    ## Updates a comment on a post.
+    ## Updates a comment by ID.
 
-    This route takes a path parameter that is the comment ID, and a JSON body that contains the updated comment data.
+    This route takes a comment ID as a path parameter and a JSON body that contains the updated comment data.
 
     ### Path Parameters:
-    - **comment_id** (`str`): The ID of the comment to update.
+    - **comment_id** (`uuid.UUID`): The ID of the comment to update.
 
     ### Request Body:
     - **content** (`str`): The updated content of the comment.
@@ -332,104 +289,72 @@ def update_comment(db: SessionDep, comment_id: str, comment_data: CommentCreateR
     - **HTTPException**: If the comment is not found.
     - **HTTPException**: If the user is not authorized to update the comment.
 
-    ### Response:
+    ### Response Body:
     - **id** (`uuid.UUID`): The ID of the updated comment.
     - **content** (`str`): The content of the updated comment.
-    - **post_id** (`uuid.UUID`): The ID of the post the updated comment belongs to.
     - **author_id** (`uuid.UUID`): The ID of the author of the updated comment.
+    - **post_id** (`uuid.UUID`): The ID of the post the comment is associated with.
     """
-
     try:
-        uuid.UUID(comment_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Comment not found")
-    
-    comment = comment_crud.get_comment(db=db, comment_id=comment_id)
-    if comment is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
-    
-    if comment.commenter_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update comment")
-    
-    return comment_crud.update_comment(db=db, comment=comment, comment_data=comment_data)
-
+        return post_service.update_comment(comment_id=comment_id, comment_data=comment_data)
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to update comment, please try again later or contact support")
 
 @router.get("/{post_id}/summarize", response_model=PostSummaryResponse, tags=["LLM"])
-def summarize_post(db: SessionDep, post_id: str):
+def summarize_post(post_id: UUID, post_service: PostService = Depends()):
     """
-    ## Summarizes a post by its ID.
+    ## Summarizes a post by ID.
 
-    This route takes a path parameter that is the post ID and returns a summary of the post.
+    This route takes a post ID as a path parameter.
 
     ### Path Parameters:
-    - **post_id** (`str`): The ID of the post to summarize.
-
-    ### Raises:
-    - **HTTPException**: If the post ID is not a valid UUID.
-    - **HTTPException**: If the post is not found or is a draft.
+    - **post_id** (`uuid.UUID`): The ID of the post to summarize.
 
     ### Response Body:
     - **summary** (`str`): The summary of the post.
     """
     try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
-    
-    post = post_crud.get_post(db=db, post_id=post_id)
-    if post is None or post.status == PostStatus.DRAFT:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    
-    summary = SummarizationService().summarize(content=post.content)
-    return summary
-    
+        return post_service.summarize_post(post_id=post_id)
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to summarize post, please try again later or contact support")
 
 @router.post("/{post_id}/chat", tags=["LLM"])
-def chat_with_post(db: SessionDep, post_id: str, current_user: CurrentUser, question_data: PostQuestionAnswerRequest):
+def chat_with_post(post_id: UUID, question_data: PostQuestionAnswerRequest, current_user: CurrentUser, post_service: PostService = Depends()):
     """
-    ## Chat with a post.
+    ## Chats with a post by ID.
 
-    This route takes a path parameter that is the post ID and returns a chat interface to interact with the post.
+    This route takes a post ID as a path parameter and a JSON body that contains the question data.
 
     ### Path Parameters:
-    - **post_id** (`str`): The ID of the post to chat with.
-    """
-
-    try:
-        uuid.UUID(post_id)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not found")
-    
-    post = post_crud.get_post(db=db, post_id=post_id)
-    if post is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    
-    # Add the question to the chat history
-    try:
-        chat = QuestionAnswerService(user_id=current_user.id, post_id=post_id, post_content=post.content, question=question_data.question)
-        answer = chat.get_answer(question=question_data.question)
-
-        if answer is None:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to process the question, please try later or contact the support team.")
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to process the question, please try later or contact the support team.")
-    return {"answer": answer}
-
-@router.post("/suggest", response_model=PostSuggestionsResponse, tags=["LLM"])
-def suggest_title_tags(db: SessionDep, current_user: CurrentUser, question_data: PostSuggestionsRequest):
-    """
-    ## Suggests title and tags for a post.
-
-    This route takes a content and returns a suggested title and tags for a post.
+    - **post_id** (`uuid.UUID`): The ID of the post to chat with.
 
     ### Request Body:
-    - **content** (`str`): The content to generate title and tags from.
+    - **question** (`str`): The question to ask the post.
+    """
+    try:
+        return post_service.chat_with_post(post_id=post_id, question=question_data.question, current_user=current_user)
+    
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to answer question, please try again later or contact support")
+
+@router.post("/suggest", response_model=PostSuggestionsResponse, dependencies=[Depends(get_current_author)], tags=["LLM"])
+def suggest_title_tags(question_data: PostSuggestionsRequest, current_user: CurrentUser, post_service: PostService = Depends()):
+    """
+    ## Suggests a title and tags for a post.
+
+    This route takes a JSON body that contains the content of the post.
+
+    ### Request Body:
+    - **content** (`str`): The content of the post.
 
     ### Response Body:
     - **title** (`str`): The suggested title for the post.
-    - **tags_list** (`List[str]`): The suggested tags for the post.
+    - **tags** (`List[str]`): The suggested tags for the post.
     """
-    suggestions = SuggestionService().suggest(content=question_data.content)
-    if suggestions is None:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not generate suggestions now, please try later or contact the support team")
-    return suggestions
+    try:
+        return post_service.suggest_title_tags(content=question_data.content)
+    except AppBaseException as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to suggest post title and tags, please try again later or contact support")
+    

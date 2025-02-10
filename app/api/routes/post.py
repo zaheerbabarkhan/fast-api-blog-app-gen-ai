@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.deps import get_current_author, CurrentUser, get_current_user
 from app.exceptions.exceptions import AppBaseException, ForbiddenException, ResourceNotFoundException
-from app.schemas.post import PostCreate, PostListResponse, PostQuestionAnswerRequest, PostResponse, PostSuggestionsRequest, PostSuggestionsResponse, PostSummaryResponse, PostUpdate
+from app.schemas.post import PostCreate, PostListResponse, PostQARequest, PostQAResponse, PostResponse, PostSuggestionsRequest, PostSuggestionsResponse, PostSummaryResponse, PostUpdate
 from app.schemas.comment import CommentCreateRequest, CommentResponse, CommentResponseWithReplies
 from app.services.comment import CommentService
 from app.services.post import PostService
@@ -322,11 +322,15 @@ def summarize_post(post_id: UUID, post_service: PostService = Depends()):
     """
     try:
         return post_service.summarize_post(post_id=post_id)
+    
+    except ResourceNotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    
     except AppBaseException as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Not able to summarize post, please try again later or contact support")
 
-@router.post("/{post_id}/chat", tags=["LLM"])
-def chat_with_post(post_id: UUID, question_data: PostQuestionAnswerRequest, current_user: CurrentUser, post_service: PostService = Depends()):
+@router.post("/{post_id}/chat", tags=["LLM"], response_model=PostQAResponse)
+def chat_with_post(post_id: UUID, question_data: PostQARequest, current_user: CurrentUser, post_service: PostService = Depends()):
     """
     ## Chats with a post by ID.
 

@@ -6,7 +6,7 @@ from langchain_core.exceptions import OutputParserException
 from app.core.config.llm.llm import LLMService
 from app.core.config.llm.prompt_templates import comment_analysis_template
 from app.core.config.llm.token_usage import TokenUsageHandler
-from app.exceptions.exceptions import LLMInitializationException, SentimentAnalysisInitException, SentimentInvokeException
+from app.exceptions.exceptions import LLMInitException, SentimentAnalysisInitException, SentimentInvokeException
 from app.schemas.llm_responses_parsers import comment_analysis_res_parser
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class CommentAnalysisService:
             self.prompt_template = comment_analysis_template()
             self.chain = self.prompt_template | self.llm_service.llm | comment_analysis_res_parser
 
-        except LLMInitializationException as e:
+        except LLMInitException as e:
             raise SentimentAnalysisInitException("Sentiment analysis service is not available") from e
 
     def sentiment_analysis(self, comment: str) -> dict:

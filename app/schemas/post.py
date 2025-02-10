@@ -4,7 +4,6 @@ import uuid
 from pydantic import BaseModel, model_validator
 
 from app.models.post import PostStatus
-from app.schemas.comment import CommentResponse
 from app.schemas.user import UserResponse
 
 
@@ -56,8 +55,11 @@ class PostSuggestionsResponse(BaseModel):
     title: str
     tags_list: List[str]
 
-class PostQuestionAnswerRequest(BaseModel):
+class PostQARequest(BaseModel):
     question: str
+
+class PostQAResponse(BaseModel):
+    answer: str
 
 class CommentAnalysisResponse(BaseModel):
     sentiment: str

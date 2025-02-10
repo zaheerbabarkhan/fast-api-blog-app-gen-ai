@@ -44,10 +44,51 @@ class SentimentAnalysisInitException(AppBaseException):
     def __init__(self, message: str = 'Sentiment analysis service is not available'):
         super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-class LLMInitializationException(AppBaseException):
+class LLMInitException(AppBaseException):
     def __init__(self, message: str = 'Failed to initialize ChatGroq'):
         super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class SentimentInvokeException(AppBaseException):
-    def __init__(self, message: str = 'Failed to invoke ChatGroq'):
+    def __init__(self, message: str = 'Failed to invoke ChatGroq for sentiment analysis'):
+        super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class SummarizationInvokeException(AppBaseException):
+    def __init__(self, message: str = 'Failed to invoke ChatGroq for summarization'):
+        super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class SuggestionServiceInitException(AppBaseException):
+    def __init__(self, message: str = 'Suggestion service is not available'):
+        super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+class SuggestionInvokeException(AppBaseException):
+    def __init__(self, message: str = 'Failed to invoke ChatGroq for suggestions'):
+        super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class SummarizationInitException(AppBaseException):
+    def __init__(self, message: str = 'Failed to initialize ChatGroq for summarization'):
+        super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class EmbeddingInitException(AppBaseException):
+    def __init__(self, message: str = 'Embedding service is not available'):
+        super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+class EmbedDocException(AppBaseException):
+    def __init__(self, message: str = 'Failed to embed documents'):
+        super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class VectorStoreInitException(AppBaseException):
+    def __init__(self, message: str = 'Vector store service is not available'):
+        super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+    
+
+class VectorStoreOpException(AppBaseException):
+    def __init__(self, message: str = 'Failed to perform operation on vector store'):
+        super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class QAInitException(AppBaseException):
+    def __init__(self, message: str = 'Question-answering service is not available'):
+        super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+class QAInvokeException(AppBaseException):
+    def __init__(self, message: str = 'Failed to invoke QuestionAnswerService'):
         super().__init__(message, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

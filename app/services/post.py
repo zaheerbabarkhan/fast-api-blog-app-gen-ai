@@ -1,13 +1,11 @@
 from uuid import UUID
 
-from fastapi import HTTPException, status
-
 from app.api.deps import SessionDep
 from app.models.post import Post, PostStatus
 from app.models.user import User, UserRole
-from app.schemas.post import PostCreate, PostSuggestionsResponse, PostUpdate
+from app.schemas.post import PostCreate, PostQAResponse, PostSuggestionsResponse, PostUpdate
 from app.crud.post import PostCRUD
-from app.exceptions.exceptions import AppBaseException, ForbiddenException, ResourceNotFoundException, DatabaseExeption
+from app.exceptions.exceptions import AppBaseException, ForbiddenException, QAInitException, QAInvokeException, ResourceNotFoundException, DatabaseExeption, SuggestionInvokeException, SuggestionServiceInitException, SummarizationInitException, SummarizationInvokeException
 from app.services.question_answer.question_answer import QuestionAnswerService
 from app.services.suggestion import SuggestionService
 from app.services.summarization import SummarizationService
@@ -153,10 +151,12 @@ class PostService:
             return summarizarion_service.summarize(post.content)
         except ResourceNotFoundException:
             raise
+        except (SummarizationInitException, SummarizationInvokeException) as e:
+            raise AppBaseException("Cannot summarize post") from e
         except DatabaseExeption:
             raise
     
-    def chat_with_post(self, post_id: UUID, question: str, current_user: User):
+    def chat_with_post(self, post_id: UUID, question: str, current_user: User) -> PostQAResponse:
         """
         Chat with a post by its ID.
 
@@ -177,11 +177,16 @@ class PostService:
 
             if post.status != PostStatus.PUBLISHED:
                 raise ResourceNotFoundException("Post not found")
+            
             chat = QuestionAnswerService(user_id=current_user.id, post_id=post_id, post_content=post.content, question=question)
             answer = chat.get_answer(question=question)
-            return answer
+            return PostQAResponse(answer=answer)
         except ResourceNotFoundException:
             raise
+        except(QAInitException, QAInvokeException) as e:
+            raise AppBaseException("Cannot chat with post") from e
+        except DatabaseExeption:
+            raise AppBaseException("Cannot chat with post")
 
     
 
@@ -198,7 +203,9 @@ class PostService:
         Raises:
             DatabaseException: If there is an error in the database operation
         """
-        suggestions = SuggestionService().suggest(content=content)
-        if suggestions is None:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not generate suggestions now, please try later or contact the support team")
-        return suggestions
+        try:
+
+            suggestions = SuggestionService().suggest(content=content)
+            return suggestions
+        except (SuggestionServiceInitException, SuggestionInvokeException) as e:
+            raise AppBaseException("Cannot get suggestions") from e

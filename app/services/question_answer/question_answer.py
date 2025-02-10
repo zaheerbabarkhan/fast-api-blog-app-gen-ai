@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
@@ -5,12 +6,14 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.runnables import RunnableWithMessageHistory
 
 from app.core.config.llm.llm import LLMService
+from app.core.config.llm.token_usage import TokenUsageHandler
+from app.exceptions.exceptions import EmbeddingInitException, LLMInitException, QAInitException, QAInvokeException, VectorStoreInitException, VectorStoreOpException
 from app.services.question_answer.memory import SessionManager
 from app.core.config.llm.vector_store import VectorStoreService
 from app.core.config.llm.embeddings import EmbeddingService
 from app.core.config.config import settings
 
-
+logger = logging.getLogger(__name__)
 class QuestionAnswerService:
     def __init__(self, post_id: UUID, user_id: UUID, question: str, post_content: str):
         self.post_id = str(post_id)
@@ -18,16 +21,20 @@ class QuestionAnswerService:
         self.question = question
         self.post_content = post_content
         self.session_manager = SessionManager()
+        self.token_hanlder = TokenUsageHandler()
 
-        embedder = EmbeddingService(model=settings.HUGGINGFACE_EMBEDDING_MODEL, api_key=settings.HUGGINGFACE_API_KEY)
-        self.vector_store_service = VectorStoreService(
-            connection_string=settings.SQLALCHEMY_DATABASE_URI,
-            embedding_service=embedder,
-        )
+        try:
+            embedder = EmbeddingService(model=settings.HUGGINGFACE_EMBEDDING_MODEL, api_key=settings.HUGGINGFACE_API_KEY)
+            self.vector_store_service = VectorStoreService(
+                connection_string=settings.SQLALCHEMY_DATABASE_URI,
+                embedding_service=embedder,
+            )
 
-        self.vector_store_service.store_blog_post(blog_post_id=self.post_id, content=self.post_content)
-        self.llm_service = LLMService(temperature=0.3)
-
+            self.vector_store_service.store_blog_post(blog_post_id=self.post_id, content=self.post_content)
+            self.llm_service = LLMService(temperature=0.3)
+        except (VectorStoreInitException, EmbeddingInitException, VectorStoreOpException, LLMInitException) as e:
+            logger.exception(f"Failed to initialize QuestionAnswerService: {str(e)}")
+            raise QAInitException("Failed to initialize QuestionAnswerService") from e
     
 
     def get_retriever(self):
@@ -100,14 +107,18 @@ class QuestionAnswerService:
             answer = conversational_rag_chain.invoke(
                 {"input": question},
                 config={
-                    "configurable": {"session_id": self.user_id}
+                    "configurable": {"session_id": self.user_id},
+                    "callbacks": [self.token_hanlder]
                 },
             )["answer"]
+            self.token_hanlder.log_token_usage(logger)
             return str(answer)
         except Exception as e:
-            print(f"An error occurred: {e}")
-            return None
+            logger.exception(f"Failed to generate answer: {str(e)}")
+            raise QAInvokeException("Failed to generate answer") from e
        
+
+
 if __name__ == "__main__":
 
     import sys

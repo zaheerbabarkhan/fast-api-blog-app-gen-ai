@@ -8,7 +8,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 
-logger = logging.getLogger("app")
+logger = logging.getLogger("request")
 
 class RequestInfo:
     def __init__(self, request: Request) -> None:

@@ -1,4 +1,5 @@
 import logging
+import os
 import logging.config
 
 LOGGING_CONFIG = {
@@ -23,6 +24,11 @@ LOGGING_CONFIG = {
             "formatter": "access",
             "stream": "ext://sys.stdout",
         },
+        "request_file": {
+            "class": "logging.FileHandler",
+            "formatter": "default",
+            "filename": "/home/zaheer-ud-din/office-data/python-gen-ai-task/fast-api-blog-app-gen-ai/request.log",
+        },
     },
     "loggers": {
         "uvicorn.error": {
@@ -33,6 +39,11 @@ LOGGING_CONFIG = {
         "uvicorn.access": {
             "level": "INFO",
             "handlers": ["access"],
+            "propagate": False,
+        },
+        "request": {
+            "level": "INFO",
+            "handlers": ["request_file"],
             "propagate": False,
         },
     },

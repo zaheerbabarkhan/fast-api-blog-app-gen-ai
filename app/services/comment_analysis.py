@@ -1,12 +1,18 @@
 import logging
+
+
 from langchain_core.exceptions import OutputParserException
 
 from app.core.config.llm.llm import LLMService
 from app.core.config.llm.prompt_templates import comment_analysis_template
+from app.core.config.llm.token_usage import TokenUsageHandler
 from app.exceptions.exceptions import LLMInitializationException, SentimentAnalysisInitException, SentimentInvokeException
 from app.schemas.llm_responses_parsers import comment_analysis_res_parser
 
 logger = logging.getLogger(__name__)
+
+
+
 
 class CommentAnalysisService:
     """
@@ -44,13 +50,18 @@ class CommentAnalysisService:
             SentimentAnalysisException: If the sentiment analysis service is not available or fails to analyze the comment.
         """
         try:
-            response = self.chain.invoke({"comment": comment})
+            token_handler = TokenUsageHandler()
+            response = self.chain.invoke(
+                {"content": comment}, 
+                config={"callbacks": [token_handler]}
+            )
+            token_handler.log_token_usage(logger)
             return response
         
         except OutputParserException as e:
-            logger.error(f"Failed to parse the response: {str(e)}")
+            logger.exception(f"Failed to parse the response: {str(e)}")
             raise SentimentInvokeException("Failed to analyze comment") from e
 
         except Exception as e:
-            logger.error(f"Failed to analyze comment: {str(e)}")
+            logger.exception(f"Failed to analyze comment: {str(e)}")
             raise SentimentInvokeException("Failed to analyze comment") from e

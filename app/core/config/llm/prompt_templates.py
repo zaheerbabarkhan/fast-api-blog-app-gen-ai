@@ -54,7 +54,7 @@ def comment_analysis_template():
                 "inappropriate: The comment contains offensive, harmful, or inappropriate language."
                 "Your task is to analyze the given comment and respond in **valid JSON format** "
                 f"with a single key 'sentiment' and the value as one of the three categories: '{SentimentEnum.POSITIVE}', '{SentimentEnum.NEGATIVE}', or '{SentimentEnum.INAPPROPRIATE}'.")
-    human_message = HumanMessage(content="<Comment>{comment}</Comment>")
+    human_message = HumanMessage(content="<Comment>{content}</Comment>")
 
     raw_prompt = ChatPromptTemplate.from_messages([
         ("system", system_message.content),  
